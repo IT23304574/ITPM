@@ -1,12 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 const Home = () => {
   const [scrollY, setScrollY] = useState(0);
+  const [stats, setStats] = useState({
+    averageRating: 0,
+    totalUsers: 0,
+    totalTrips: 0,
+  });
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
+
+    const fetchGlobalStats = async () => {
+      try {
+        const { data } = await axios.get('http://localhost:5000/api/trips/stats/global');
+        setStats(data);
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+    fetchGlobalStats();
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -193,25 +210,25 @@ const Home = () => {
           <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl w-full animate-fadeInUp delay-500">
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-600 bg-clip-text text-transparent mb-2">
-                500+
+                {stats.totalUsers}+
               </div>
               <div className="text-gray-400 text-sm">Active Users</div>
             </div>
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-2">
-                1000+
+                {stats.totalTrips}+
               </div>
               <div className="text-gray-400 text-sm">Trips Shared</div>
             </div>
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-2">
-                $50K+
+                LKR 50K+
               </div>
               <div className="text-gray-400 text-sm">Money Saved</div>
             </div>
             <div className="text-center">
               <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-pink-400 to-pink-600 bg-clip-text text-transparent mb-2">
-                4.9★
+                {stats.averageRating ? stats.averageRating.toFixed(1) : '0.0'}★
               </div>
               <div className="text-gray-400 text-sm">User Rating</div>
             </div>
