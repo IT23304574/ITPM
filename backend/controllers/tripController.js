@@ -16,3 +16,27 @@ exports.addMessageToTrip = async (trip, userId, message) => {
   await trip.populate('chat.sender', 'studentId profileImage');
   return trip.chat;
 };
+// chatController.js
+const { canUserChat } = require('./chatValidation');
+const { addMessageToTrip } = require('./chatHandler');
+
+exports.addChatMessage = async (req, res) => {
+  try {
+    const { message } = req.body;
+    const trip = await Trip.findById(req.params.id);
+
+    if (!trip) {
+      return res.status(404).json({ msg: 'Trip not found' });
+    }
+
+    if (!canUserChat(trip, req.user.id)) {
+      return res.status(401).json({ msg: 'Not authorized to chat in this trip' });
+    }
+
+    const chat = await addMessageToTrip(trip, req.user.id, message);
+    res.json(chat);
+  } catch (err) {
+    console.error('❌ Add chat error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
