@@ -1,7 +1,8 @@
 import React from 'react';
 import AboutUs from './AboutUs';
 import ContactUs from './ContactUs';
-import PostTrip from './PostTrip';
+//import PostTrip from './PostTrip';
+import CreateTrip from './components/CreateTrip';
 
 function App() {
   return (
