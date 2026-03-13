@@ -1,5 +1,3 @@
-
-
 exports.addChatMessage = async (req, res) => {
   try {
     const { message } = req.body;
@@ -9,12 +7,6 @@ exports.addChatMessage = async (req, res) => {
       return res.status(404).json({ msg: 'Trip not found' });
     }
 
-    if (!canUserChat(trip, req.user.id)) {
-      return res.status(401).json({ msg: 'Not authorized to chat in this trip' });
-    }
-
-    const chat = await addMessageToTrip(trip, req.user.id, message);
-    res.json(chat);
     // Check if user is organizer or joined
     const isOrganizer = trip.organizer.toString() === req.user.id;
     const isJoined = trip.joinedStudents.some(s => (s.user || s).toString() === req.user.id);
@@ -40,7 +32,6 @@ exports.addChatMessage = async (req, res) => {
   }
 };
 
-
 // GET /trips/:id/chat (protected)
 exports.getTripChat = async (req, res) => {
   try {
@@ -54,8 +45,6 @@ exports.getTripChat = async (req, res) => {
     res.json(trip.chat);
   } catch (err) {
     console.error('❌ Get chat error:', err.message);
-    res.status(500).send(err + 'Server Error');
+    res.status(500).send('Server Error');
   }
 };
-
-// PUT /trips/join/:id or POST /trips/join { tripId } (protected)
