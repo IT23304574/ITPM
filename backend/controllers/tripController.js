@@ -54,7 +54,7 @@ exports.getTripChat = async (req, res) => {
     res.json(trip.chat);
   } catch (err) {
     console.error('❌ Get chat error:', err.message);
-    res.status(500).send('Server Error');
+    res.status(500).send(err + 'Server Error');
   }
 };
 
