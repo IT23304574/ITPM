@@ -1,3 +1,6 @@
+const Trip = require('../models/Trip');
+
+// POST /trips/:id/chat (protected)
 exports.addChatMessage = async (req, res) => {
   try {
     const { message } = req.body;
@@ -48,3 +51,6 @@ exports.getTripChat = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
+
+
