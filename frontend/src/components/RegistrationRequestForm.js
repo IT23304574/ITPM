@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import API from '../utils/api';
 import axios from 'axios';
 
 const RegistrationRequestForm = () => {
@@ -27,7 +28,9 @@ const RegistrationRequestForm = () => {
     }
 
     try {
+      // Using the absolute path to bypass any configuration issues in the API utility
       const res = await axios.post('http://localhost:5000/api/requests', formData);
+      
       setStatus({
         loading: false,
         error: null,
