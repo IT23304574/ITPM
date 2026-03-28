@@ -233,10 +233,13 @@ import autoTable from 'jspdf-autotable';
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
     @keyframes pageFade { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:translateY(0);} }
     @keyframes alertIn  { from { opacity:0; transform:translateY(-6px);} to { opacity:1; transform:translateY(0);} }
-    .ap-row:hover { background: #111d2b !important; }
-    .ap-input:focus  { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; background:#0a1520 !important; outline:none; }
+    .ap-row:hover { background: var(--ap-row-hover) !important; }
+    .ap-input:focus  { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; outline:none; }
     .ap-search:focus { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; outline:none; width:220px !important; }
     .ap-inline-input:focus { border-color:#00c87a !important; outline:none; }
+    .ap-input:focus, .ap-search:focus, .ap-inline-input:focus { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; background: var(--ap-input-bg) !important; outline:none; }
+    .ap-search:focus { width:220px !important; }
+    .ap-input::placeholder, .ap-search::placeholder, .ap-inline-input::placeholder { color: var(--ap-muted) !important; opacity: 0.5; }
     .ap-btn-primary:hover  { background:linear-gradient(135deg,#00ffa3,#00c87a) !important; box-shadow:0 4px 22px rgba(0,255,163,0.38) !important; }
     .ap-btn-blue:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; box-shadow:0 4px 22px rgba(59,130,246,0.38) !important; }
     .ap-btn-save:hover     { background:#16a34a !important; }
@@ -260,6 +263,19 @@ const AdminPanel = () => {
   const [newPass, setNewPass]       = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [darkMode, setDarkMode] = useState(true);
+
+  const theme = {
+    bg: darkMode ? '#080b10' : '#f8fafc',
+    cardBg: darkMode ? '#0d1520' : '#ffffff',
+    text: darkMode ? '#dce9f5' : '#1e293b',
+    border: darkMode ? '#1a2b3c' : '#e2e8f0',
+    inputBg: darkMode ? '#070d14' : '#f1f5f9',
+    muted: darkMode ? '#6b8fa8' : '#64748b',
+    gridColor: darkMode ? 'rgba(0,255,163,0.025)' : 'rgba(0,0,0,0.02)',
+    radialColor: darkMode ? 'rgba(0,255,163,0.055)' : 'rgba(0,255,163,0.03)',
+    rowHover: darkMode ? '#111d2b' : '#f1f5f9'
+  };
 
   const filteredStudents = students.filter(s =>
     s.studentId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -349,18 +365,21 @@ const AdminPanel = () => {
   const isSuccess = message.includes('✅');
 
   return (
-    <div style={{
+    <div className={darkMode ? 'dark-theme' : 'light-theme'} style={{
       minHeight: '100vh',
-      backgroundColor: '#080b10',
+      backgroundColor: theme.bg,
       backgroundImage: `
-        linear-gradient(rgba(0,255,163,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,163,0.025) 1px, transparent 1px),
-        radial-gradient(ellipse 80% 45% at 50% 0%, rgba(0,255,163,0.055) 0%, transparent 65%)
+        linear-gradient(${theme.gridColor} 1px, transparent 1px),
+        linear-gradient(90deg, ${theme.gridColor} 1px, transparent 1px),
+        radial-gradient(ellipse 80% 45% at 50% 0%, ${theme.radialColor} 0%, transparent 65%)
       `,
       backgroundSize: '40px 40px, 40px 40px, 100% 100%',
       fontFamily: "'DM Sans', sans-serif",
-      color: '#dce9f5',
+      color: theme.text,
       padding: '2.5rem 1.75rem',
+      '--ap-row-hover': theme.rowHover,
+      '--ap-input-bg': theme.inputBg,
+      '--ap-muted': theme.muted,
     }}>
       <div style={{
         maxWidth: '940px',
@@ -369,18 +388,48 @@ const AdminPanel = () => {
       }}>
 
         {/* ── Page Title ── */}
-        <h1 style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '1.6rem',
-          fontWeight: 700,
-          letterSpacing: '0.06em',
-          textAlign: 'center',
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
           marginBottom: '2.5rem',
-          color: '#dce9f5',
         }}>
-          <span style={{ color: '#00ffa3', marginRight: '0.4rem', fontSize: '1.1rem' }}>//</span>
-          Admin Dashboard
-        </h1>
+          <h1 style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '1.6rem',
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            color: theme.text,
+            margin: 0,
+          }}>
+            <span style={{ color: '#00ffa3', marginRight: '0.4rem', fontSize: '1.1rem' }}>//</span>
+            Admin Dashboard
+          </h1>
+          <button 
+            onClick={() => setDarkMode(!darkMode)}
+            style={{
+              position: 'absolute',
+              right: 0,
+              background: theme.cardBg,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              fontSize: '1.2rem',
+              color: darkMode ? '#fbbf24' : '#64748b',
+              transition: 'all 0.3s ease',
+            }}
+            title={`Switch to ${darkMode ? 'Light' : 'Dark'} Mode`}
+          >
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+        </div>
 
         {/* ── Top Grid ── */}
         <div style={{
@@ -392,8 +441,8 @@ const AdminPanel = () => {
 
           {/* ── Card: Admin Actions ── */}
           <div style={{
-            background: '#0d1520',
-            border: '1px solid #1a2b3c',
+            background: theme.cardBg,
+            border: `1px solid ${theme.border}`,
             borderRadius: '14px',
             padding: '1.75rem',
             position: 'relative',
@@ -417,7 +466,7 @@ const AdminPanel = () => {
 
             <p style={{
               fontSize: '0.84rem',
-              color: '#6b8fa8',
+              color: theme.muted,
               marginBottom: '1.5rem',
               lineHeight: 1.55,
             }}>Update your security credentials.</p>
@@ -450,8 +499,8 @@ const AdminPanel = () => {
 
           {/* ── Card: Register Student ── */}
           <div style={{
-            background: '#0d1520',
-            border: '1px solid #1a2b3c',
+            background: theme.cardBg,
+            border: `1px solid ${theme.border}`,
             borderRadius: '14px',
             padding: '1.75rem',
             position: 'relative',
@@ -497,7 +546,7 @@ const AdminPanel = () => {
                   fontSize: '0.68rem',
                   letterSpacing: '0.09em',
                   textTransform: 'uppercase',
-                  color: '#6b8fa8',
+                  color: theme.muted,
                   marginBottom: '0.4rem',
                 }}>Student ID</label>
                 <input
@@ -511,10 +560,10 @@ const AdminPanel = () => {
                   style={{
                     width: '100%',
                     padding: '0.68rem 0.9rem',
-                    background: '#070d14',
-                    border: '1px solid #1a2b3c',
+                    background: theme.inputBg,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: '6px',
-                    color: '#dce9f5',
+                    color: theme.text,
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '0.84rem',
                     caretColor: '#00ffa3',
@@ -531,7 +580,7 @@ const AdminPanel = () => {
                   fontSize: '0.68rem',
                   letterSpacing: '0.09em',
                   textTransform: 'uppercase',
-                  color: '#6b8fa8',
+                  color: theme.muted,
                   marginBottom: '0.4rem',
                 }}>Password</label>
                 <input
@@ -545,10 +594,10 @@ const AdminPanel = () => {
                   style={{
                     width: '100%',
                     padding: '0.68rem 0.9rem',
-                    background: '#070d14',
-                    border: '1px solid #1a2b3c',
+                    background: theme.inputBg,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: '6px',
-                    color: '#dce9f5',
+                    color: theme.text,
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '0.84rem',
                     caretColor: '#00ffa3',
@@ -588,8 +637,8 @@ const AdminPanel = () => {
 
         {/* ── Table Card ── */}
         <div style={{
-          background: '#0d1520',
-          border: '1px solid #1a2b3c',
+          background: theme.cardBg,
+          border: `1px solid ${theme.border}`,
           borderRadius: '14px',
           padding: '1.75rem',
           position: 'relative',
@@ -626,7 +675,7 @@ const AdminPanel = () => {
                     position: 'absolute', left: '0.6rem', top: '50%',
                     transform: 'translateY(-50%)',
                     width: '13px', height: '13px',
-                    color: '#2e4a60', pointerEvents: 'none',
+                    color: theme.muted, pointerEvents: 'none',
                   }}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
@@ -641,10 +690,10 @@ const AdminPanel = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   style={{
                     padding: '0.52rem 0.8rem 0.52rem 2rem',
-                    background: '#070d14',
-                    border: '1px solid #1a2b3c',
+                    background: theme.inputBg,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: '6px',
-                    color: '#dce9f5',
+                    color: theme.text,
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: '0.75rem',
                     width: '185px',
@@ -727,7 +776,7 @@ const AdminPanel = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1a2b3c' }}>
+                <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
                   <th style={{ padding: '0.65rem 1rem' }}></th>
                   {['Student ID', 'Joined Date', 'Actions'].map((h) => (
                     <th key={h} style={{
@@ -746,7 +795,7 @@ const AdminPanel = () => {
               <tbody>
                 {filteredStudents.map((student) => (
                   <tr key={student._id} className="ap-row" style={{ transition: 'background 0.15s' }}>
-                    <td style={{ padding: '0.82rem 1rem', borderBottom: '1px solid rgba(26,43,60,0.5)' }}>
+                    <td style={{ padding: '0.82rem 1rem', borderBottom: `1px solid ${theme.border}` }}>
                       <input 
                         type="checkbox" 
                         checked={selectedIds.includes(student._id)} 
@@ -757,7 +806,7 @@ const AdminPanel = () => {
 
                     <td style={{
                       padding: '0.82rem 1rem',
-                      borderBottom: '1px solid rgba(26,43,60,0.5)',
+                      borderBottom: `1px solid ${theme.border}`,
                       verticalAlign: 'middle',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '0.8rem',
@@ -769,18 +818,18 @@ const AdminPanel = () => {
 
                     <td style={{
                       padding: '0.82rem 1rem',
-                      borderBottom: '1px solid rgba(26,43,60,0.5)',
+                      borderBottom: `1px solid ${theme.border}`,
                       verticalAlign: 'middle',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '0.76rem',
-                      color: '#6b8fa8',
+                      color: theme.muted,
                     }}>
                       {new Date(student.createdAt).toLocaleDateString()}
                     </td>
 
                     <td style={{
                       padding: '0.82rem 1rem',
-                      borderBottom: '1px solid rgba(26,43,60,0.5)',
+                      borderBottom: `1px solid ${theme.border}`,
                       verticalAlign: 'middle',
                     }}>
                       {editingId === student.studentId ? (
@@ -793,10 +842,10 @@ const AdminPanel = () => {
                             onChange={(e) => setNewPass(e.target.value)}
                             style={{
                               padding: '0.38rem 0.65rem',
-                              background: '#070d14',
-                              border: '1px solid #1a2b3c',
+                              background: theme.inputBg,
+                              border: `1px solid ${theme.border}`,
                               borderRadius: '5px',
-                              color: '#dce9f5',
+                              color: theme.text,
                               fontFamily: "'JetBrains Mono', monospace",
                               fontSize: '0.75rem',
                               width: '130px',
@@ -827,8 +876,8 @@ const AdminPanel = () => {
                             style={{
                               padding: '0.38rem 0.8rem',
                               background: 'transparent',
-                              color: '#6b8fa8',
-                              border: '1px solid #1a2b3c',
+                              color: theme.muted,
+                              border: `1px solid ${theme.border}`,
                               borderRadius: '5px',
                               fontFamily: "'JetBrains Mono', monospace",
                               fontSize: '0.73rem',
@@ -864,7 +913,7 @@ const AdminPanel = () => {
                     <td colSpan="4" style={{
                       textAlign: 'center',
                       padding: '2.8rem',
-                      color: '#2e4a60',
+                      color: theme.muted,
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '0.76rem',
                     }}>
