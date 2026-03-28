@@ -12,11 +12,25 @@ const JoinTripModal = ({ tripId, isOpen, onClose, onJoinSuccess }) => {
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'phoneNumber') {
+      if (value !== '' && !/^\d+$/.test(value)) {
+        setError('Phone number must contain only numbers');
+      } else {
+        setError('');
+      }
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.phoneNumber.match(/^\d{10}$/)) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
