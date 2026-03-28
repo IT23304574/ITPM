@@ -6,7 +6,8 @@ const {
   changePassword,
   getAllStudents,
   adminUpdateStudentPassword,
-  updateProfile
+  updateProfile,
+  deleteStudents
 } = require('../controllers/authController');
 const auth = require('../middleware/auth');
 
@@ -19,5 +20,6 @@ router.post('/change-password', auth, changePassword);
 router.get('/students', auth, getAllStudents);
 router.put('/admin/update-password', auth, adminUpdateStudentPassword);
 router.put('/profile', auth, updateProfile);
+router.delete('/students', auth, deleteStudents);
 
 module.exports = router;

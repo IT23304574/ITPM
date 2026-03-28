@@ -219,6 +219,8 @@ export default AdminPanel;*/
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerStudent, getAllStudents, adminUpdateStudentPassword } from '../api';
+import axios from 'axios';
+import API from '../utils/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -239,6 +241,7 @@ import autoTable from 'jspdf-autotable';
     .ap-btn-blue:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; box-shadow:0 4px 22px rgba(59,130,246,0.38) !important; }
     .ap-btn-save:hover     { background:#16a34a !important; }
     .ap-btn-cancel:hover   { background:#1e2d3d !important; color:#dce9f5 !important; }
+    .ap-btn-delete:hover   { background:linear-gradient(135deg,#ff4d6d,#c9184a) !important; box-shadow:0 4px 22px rgba(255,77,109,0.38) !important; }
     .ap-btn-pass:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; }
     .ap-btn-primary:active, .ap-btn-blue:active, .ap-btn-save:active, .ap-btn-pass:active { transform:scale(0.97) !important; }
     ::-webkit-scrollbar { width:5px; height:5px; }
@@ -256,6 +259,7 @@ const AdminPanel = () => {
   const [editingId, setEditingId]   = useState(null);
   const [newPass, setNewPass]       = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const filteredStudents = students.filter(s =>
     s.studentId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -290,6 +294,40 @@ const AdminPanel = () => {
       setNewPass('');
     } catch (err) {
       setMessage(err.response?.data?.msg || '❌ Error updating password');
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredStudents.length && filteredStudents.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredStudents.map(s => s._id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!window.confirm(`⚠️ Are you sure you want to delete ${selectedIds.length} students? This action cannot be undone.`)) return;
+    try {
+      // Use absolute path and manual token retrieval for reliability
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const token = storedUser?.token;
+
+      await axios.delete('http://localhost:5000/api/auth/students', { 
+        headers: { 'Authorization': `Bearer ${token}` },
+        data: { ids: selectedIds } 
+      });
+
+      setMessage(`✅ ${selectedIds.length} students deleted successfully!`);
+      setSelectedIds([]);
+      fetchStudents();
+    } catch (err) {
+      setMessage(err.response?.data?.msg || '❌ Error deleting students');
     }
   };
 
@@ -618,6 +656,44 @@ const AdminPanel = () => {
               </div>
 
               <button
+                onClick={toggleSelectAll}
+                className="ap-btn-blue"
+                style={{
+                  padding: '0.52rem 0.95rem',
+                  background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {selectedIds.length === filteredStudents.length && filteredStudents.length > 0 ? 'Deselect All' : 'Select All Filtered'}
+              </button>
+
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={handleDeleteSelected}
+                  className="ap-btn-delete"
+                  style={{
+                    padding: '0.52rem 0.95rem',
+                    background: 'linear-gradient(135deg, #ff4d6d, #c9184a)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Delete ({selectedIds.length})
+                </button>
+              )}
+
+              <button
                 className="ap-btn-primary"
                 onClick={generatePDF}
                 style={{
@@ -652,6 +728,7 @@ const AdminPanel = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #1a2b3c' }}>
+                  <th style={{ padding: '0.65rem 1rem' }}></th>
                   {['Student ID', 'Joined Date', 'Actions'].map((h) => (
                     <th key={h} style={{
                       padding: '0.65rem 1rem',
@@ -669,6 +746,14 @@ const AdminPanel = () => {
               <tbody>
                 {filteredStudents.map((student) => (
                   <tr key={student._id} className="ap-row" style={{ transition: 'background 0.15s' }}>
+                    <td style={{ padding: '0.82rem 1rem', borderBottom: '1px solid rgba(26,43,60,0.5)' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(student._id)} 
+                        onChange={() => toggleSelect(student._id)}
+                        style={{ cursor: 'pointer', accentColor: '#00ffa3' }}
+                      />
+                    </td>
 
                     <td style={{
                       padding: '0.82rem 1rem',
@@ -776,7 +861,7 @@ const AdminPanel = () => {
 
                 {filteredStudents.length === 0 && (
                   <tr>
-                    <td colSpan="3" style={{
+                    <td colSpan="4" style={{
                       textAlign: 'center',
                       padding: '2.8rem',
                       color: '#2e4a60',
