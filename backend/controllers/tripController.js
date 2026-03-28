@@ -327,6 +327,18 @@ exports.getGlobalStats = async (req, res) => {
       },
     ]);
 
+    // Get trip counts by vehicle type
+    const vehicleStats = await Trip.aggregate([
+      { $group: { _id: '$vehicleType', count: { $sum: 1 } } }
+    ]);
+
+    // Get top 3 destinations
+    const topDestinations = await Trip.aggregate([
+      { $group: { _id: '$destination', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 3 }
+    ]);
+
     const totalUsers = await User.countDocuments({ role: 'student' });
     const totalTrips = await Trip.countDocuments();
 
@@ -334,6 +346,8 @@ exports.getGlobalStats = async (req, res) => {
       averageRating: ratingStats.length > 0 ? ratingStats[0].averageRating : 0,
       totalUsers,
       totalTrips,
+      vehicleStats,
+      topDestinations
     });
   } catch (err) {
     console.error('❌ Get global stats error:', err.message);

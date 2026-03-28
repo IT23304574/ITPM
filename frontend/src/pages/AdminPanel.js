@@ -233,14 +233,14 @@ import autoTable from 'jspdf-autotable';
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
     @keyframes pageFade { from { opacity:0; transform:translateY(14px);} to { opacity:1; transform:translateY(0);} }
     @keyframes alertIn  { from { opacity:0; transform:translateY(-6px);} to { opacity:1; transform:translateY(0);} }
+    @keyframes growBar { from { width: 0; } to { width: var(--final-width); } }
     .ap-row:hover { background: var(--ap-row-hover) !important; }
-    .ap-input:focus  { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; outline:none; }
-    .ap-search:focus { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; outline:none; width:220px !important; }
-    .ap-inline-input:focus { border-color:#00c87a !important; outline:none; }
     .ap-input:focus, .ap-search:focus, .ap-inline-input:focus { border-color:#00c87a !important; box-shadow:0 0 0 3px rgba(0,255,163,0.18) !important; background: var(--ap-input-bg) !important; outline:none; }
     .ap-search:focus { width:220px !important; }
     .ap-input::placeholder, .ap-search::placeholder, .ap-inline-input::placeholder { color: var(--ap-muted) !important; opacity: 0.5; }
     .ap-btn-primary:hover  { background:linear-gradient(135deg,#00ffa3,#00c87a) !important; box-shadow:0 4px 22px rgba(0,255,163,0.38) !important; }
+    .ap-stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,255,163,0.12) !important; }
+    .ap-progress-fill { animation: growBar 1.2s ease-out forwards; }
     .ap-btn-blue:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; box-shadow:0 4px 22px rgba(59,130,246,0.38) !important; }
     .ap-btn-save:hover     { background:#16a34a !important; }
     .ap-btn-cancel:hover   { background:#1e2d3d !important; color:#dce9f5 !important; }
@@ -264,6 +264,7 @@ const AdminPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [darkMode, setDarkMode] = useState(true);
+  const [stats, setStats] = useState({ totalUsers: 0, totalTrips: 0, averageRating: 0, vehicleStats: [], topDestinations: [] });
 
   const theme = {
     bg: darkMode ? '#080b10' : '#f8fafc',
@@ -281,12 +282,24 @@ const AdminPanel = () => {
     s.studentId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const vehicleColors = {
+    'TukTuk': '#00ffa3',
+    'Small Car': '#3b82f6',
+    'Medium Car': '#a855f7',
+    'Van': '#f59e0b'
+  };
+
   const fetchStudents = async () => {
     try { const { data } = await getAllStudents(); setStudents(data); }
     catch (err) { console.error('Error fetching students:', err); }
   };
 
-  useEffect(() => { fetchStudents(); }, []);
+  const fetchStats = async () => {
+    try { const { data } = await API.get('/trips/stats/global'); setStats(data); }
+    catch (err) { console.error('Error fetching stats:', err); }
+  };
+
+  useEffect(() => { fetchStudents(); fetchStats(); }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -429,6 +442,122 @@ const AdminPanel = () => {
           >
             {darkMode ? '☀️' : '🌙'}
           </button>
+        </div>
+
+        {/* ── Section: Analytics Dashboard ── */}
+        <div style={{ marginBottom: '1.4rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+            {/* Numeric Stat Cards */}
+            {[
+              { label: 'Total Students', val: stats.totalUsers, color: '#00ffa3', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197' },
+              { label: 'Trips Created', val: stats.totalTrips, color: '#3b82f6', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+              { label: 'Avg Rating', val: (stats.averageRating || 0).toFixed(1), color: '#fbbf24', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' }
+            ].map((s, i) => (
+              <div key={i} className="ap-stat-card" style={{
+                background: theme.cardBg,
+                border: `1px solid ${theme.border}`,
+                padding: '1.25rem',
+                borderRadius: '12px',
+                transition: 'all 0.2s ease',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: theme.muted, letterSpacing: '0.05em' }}>{s.label}</span>
+                  <svg style={{ width: '14px', height: '14px', color: s.color }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.icon} />
+                  </svg>
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: theme.text }}>{s.val}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.4rem' }}>
+            {/* Vehicle Usage Visualizer */}
+            <div style={{
+              background: theme.cardBg,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '14px',
+              padding: '1.5rem',
+            }}>
+              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', fontWeight: 700, color: '#00ffa3', textTransform: 'uppercase', marginBottom: '1.2rem', letterSpacing: '0.05em' }}>
+                Vehicle Utilization
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {(stats.vehicleStats || []).length > 0 ? stats.vehicleStats.map((v, i) => {
+                  const percentage = ((v.count / stats.totalTrips) * 100).toFixed(0);
+                  return (
+                    <div key={i}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.35rem', color: theme.text }}>
+                        <span>{v._id}</span>
+                        <span style={{ fontWeight: 600 }}>{percentage}%</span>
+                      </div>
+                      <div style={{ height: '6px', background: theme.bg, borderRadius: '10px', overflow: 'hidden' }}>
+                        <div 
+                          className="ap-progress-fill" 
+                          style={{ 
+                            height: '100%', 
+                            background: 'linear-gradient(90deg, #00ffa3, #00c87a)', 
+                            '--final-width': `${percentage}%` 
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p style={{ fontSize: '0.75rem', color: theme.muted }}>No trip data available yet.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Popular Destinations */}
+            <div style={{
+              background: theme.cardBg,
+              border: `1px solid ${theme.border}`,
+              borderRadius: '14px',
+              padding: '1.5rem',
+            }}>
+              <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase', marginBottom: '1.2rem', letterSpacing: '0.05em' }}>
+                Top Destinations
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {(stats.topDestinations || []).map((dest, i) => (
+                  <div key={i} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.8rem', 
+                    padding: '0.6rem', 
+                    background: theme.bg, 
+                    borderRadius: '8px',
+                    border: `1px solid ${theme.border}`
+                  }}>
+                    <div style={{ 
+                      width: '24px', height: '24px', 
+                      borderRadius: '50%', 
+                      background: i === 0 ? 'rgba(251,191,36,0.1)' : 'rgba(107,143,168,0.1)', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.7rem', fontWeight: 700, color: i === 0 ? '#fbbf24' : theme.muted
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: theme.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                        {dest._id}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: theme.muted }}>
+                        {dest.count} trips coordinated
+                      </div>
+                    </div>
+                    <svg style={{ width: '12px', height: '12px', color: '#00ffa3' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  </div>
+                ))}
+                {(!stats.topDestinations || stats.topDestinations.length === 0) && (
+                  <p style={{ fontSize: '0.75rem', color: theme.muted }}>Analyze your popular routes here.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Top Grid ── */}
