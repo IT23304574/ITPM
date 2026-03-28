@@ -1,0 +1,8 @@
+# Dependency directories
+node_modules/
+
+# Optional: Ignore environment variables and build folders
+.env
+dist/
+build/
+.DS_Store
