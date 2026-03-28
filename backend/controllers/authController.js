@@ -177,3 +177,21 @@ exports.updateProfile = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
+// DELETE /auth/students (protected, admin only)
+exports.deleteStudents = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied' });
+    }
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ msg: 'Invalid request: No IDs provided' });
+    }
+    await User.deleteMany({ _id: { $in: ids } });
+    res.json({ msg: 'Students deleted successfully' });
+  } catch (err) {
+    console.error('❌ Bulk delete students error:', err.message);
+    res.status(500).json({ msg: 'Server error: Failed to delete students' });
+  }
+};

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import API from '../utils/api';
 import axios from 'axios';
 
 const RegistrationRequestForm = () => {
@@ -28,9 +27,7 @@ const RegistrationRequestForm = () => {
     }
 
     try {
-      // Using the absolute path to bypass any configuration issues in the API utility
       const res = await axios.post('http://localhost:5000/api/requests', formData);
-      
       setStatus({
         loading: false,
         error: null,
@@ -41,19 +38,19 @@ const RegistrationRequestForm = () => {
     } catch (err) {
       setStatus({
         loading: false,
-        error: err.response?.data?.msg || err.message || 'An error occurred. Please try again.',
+        error: err.response?.data?.msg || 'An error occurred. Please try again.',
         success: null,
       });
     }
   };
 
   return (
-    <div className="text-white">
-      <h3 className="text-xl font-bold mb-2 text-center">Request a New Account</h3>
-      <p className="text-gray-400 mb-6 text-center text-sm">If you are a new student, request an account from the administrator here.</p>
+    <div className="registration-request-container">
+      <h3>Request a New Account</h3>
+      <p>If you are a new student, you can request an account from the administrator here.</p>
       <form onSubmit={onSubmit}>
-        <div className="mb-4">
-          <label htmlFor="studentId" className="block text-gray-400 mb-2 text-sm">Your Student IT Number</label>
+        <div className="form-group">
+          <label htmlFor="studentId">Your Student IT Number</label>
           <input
             type="text"
             id="studentId"
@@ -62,11 +59,10 @@ const RegistrationRequestForm = () => {
             onChange={onChange}
             placeholder="e.g., IT23304574"
             required
-            className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-emerald-500"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="message" className="block text-gray-400 mb-2 text-sm">Message to Admin</label>
+        <div className="form-group">
+          <label htmlFor="message">Message to Admin</label>
           <textarea
             id="message"
             name="message"
@@ -74,14 +70,13 @@ const RegistrationRequestForm = () => {
             onChange={onChange}
             placeholder="e.g., 'Hi, I'm a new student and need an account.'"
             required
-            className="w-full p-3 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-emerald-500 h-24"
           ></textarea>
         </div>
 
-        {status.error && <p className="text-red-400 text-sm mb-4 text-center">{status.error}</p>}
-        {status.success && <p className="text-green-400 text-sm mb-4 text-center">{status.success}</p>}
+        {status.error && <p className="error-message">{status.error}</p>}
+        {status.success && <p className="success-message">{status.success}</p>}
 
-        <button type="submit" disabled={status.loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold transition disabled:bg-gray-500">
+        <button type="submit" disabled={status.loading}>
           {status.loading ? 'Sending...' : 'Send Request'}
         </button>
       </form>
