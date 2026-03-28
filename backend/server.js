@@ -21,7 +21,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/requests', requestRoutes);
 
-// Important: Ensure this matches the port used in the frontend axios call
+
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
