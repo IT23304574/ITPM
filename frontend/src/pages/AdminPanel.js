@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerStudent, getAllStudents, adminUpdateStudentPassword } from '../api';
-import API from '../utils/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ studentId: '', password: '' });
   const [message, setMessage] = useState('');
   const [students, setStudents] = useState([]);
-  const [requests, setRequests] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [newPass, setNewPass] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredStudents = students.filter(student =>
+    student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const fetchStudents = async () => {
     try {
@@ -21,16 +26,7 @@ const AdminPanel = () => {
     }
   };
 
-  const fetchRequests = async () => {
-    try {
-      const { data } = await API.get('/requests');
-      setRequests(data);
-    } catch (err) {
-      console.error("Error fetching requests:", err);
-    }
-  };
-
-  useEffect(() => { fetchStudents(); fetchRequests(); }, []);
+  useEffect(() => { fetchStudents(); }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,29 +55,27 @@ const AdminPanel = () => {
     }
   };
 
-  const handleApproveRequest = async (reqId, studentId) => {
-    const password = prompt(`Enter initial password for ${studentId}:`);
-    if (!password) return;
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("Registered Students Report", 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
-    try {
-      const res = await API.post(`/requests/${reqId}/approve`, { password });
-      setMessage(`✅ ${res.data.msg}`);
-      fetchRequests();
-      fetchStudents();
-    } catch (err) {
-      setMessage(err.response?.data?.msg || '❌ Error approving request');
-    }
-  };
+    const tableColumn = ["Student ID", "Joined Date"];
+    const tableRows = filteredStudents.map(student => [
+      student.studentId,
+      new Date(student.createdAt).toLocaleDateString()
+    ]);
 
-  const handleRejectRequest = async (reqId) => {
-    if (!window.confirm("Reject this request?")) return;
-    try {
-      const res = await API.post(`/requests/${reqId}/reject`);
-      setMessage(`✅ ${res.data.msg}`);
-      fetchRequests();
-    } catch (err) {
-      setMessage(err.response?.data?.msg || '❌ Error rejecting request');
-    }
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 35,
+    });
+    doc.save(`${searchTerm ? 'Filtered_' : ''}Students_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -142,52 +136,34 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {/* Section: Pending Registration Requests */}
-        <div className="mt-8 bg-gray-800 p-6 rounded-xl border border-gray-700">
-          <h2 className="text-xl font-bold mb-4 text-emerald-400">Pending Registration Requests</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-700 text-gray-400">
-                  <th className="p-3">Student ID</th>
-                  <th className="p-3">Message</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.filter(r => r.status === 'pending').map((req) => (
-                  <tr key={req._id} className="border-b border-gray-700 hover:bg-gray-750">
-                    <td className="p-3">{req.studentId}</td>
-                    <td className="p-3">{req.message}</td>
-                    <td className="p-3 text-yellow-400">{req.status}</td>
-                    <td className="p-3 flex gap-2">
-                      <button 
-                        onClick={() => handleApproveRequest(req._id, req.studentId)}
-                        className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm transition"
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleRejectRequest(req._id)}
-                        className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm transition"
-                      >
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {requests.filter(r => r.status === 'pending').length === 0 && (
-                  <tr><td colSpan="4" className="p-4 text-center text-gray-500">No pending requests.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {/* Section 3: Registered Students List */}
         <div className="mt-8 bg-gray-800 p-6 rounded-xl border border-gray-700">
-          <h2 className="text-xl font-bold mb-4 text-emerald-400">Registered Students</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+            <h2 className="text-xl font-bold text-emerald-400">Registered Students</h2>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by Student ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-48 p-2 pl-8 bg-gray-700 border border-gray-600 rounded text-sm text-white focus:outline-none focus:border-emerald-500"
+                />
+                <svg className="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <button 
+                onClick={generatePDF}
+                className="bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-lg font-bold transition text-white flex items-center gap-2 text-sm shadow-lg hover:shadow-emerald-500/30"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clipRule="evenodd" />
+                </svg>
+                Report
+              </button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -198,7 +174,7 @@ const AdminPanel = () => {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student) => (
+                {filteredStudents.map((student) => (
                   <tr key={student._id} className="border-b border-gray-700 hover:bg-gray-750">
                     <td className="p-3">{student.studentId}</td>
                     <td className="p-3">{new Date(student.createdAt).toLocaleDateString()}</td>
@@ -226,8 +202,8 @@ const AdminPanel = () => {
                     </td>
                   </tr>
                 ))}
-                {students.length === 0 && (
-                  <tr><td colSpan="3" className="p-4 text-center text-gray-500">No students found.</td></tr>
+                {filteredStudents.length === 0 && (
+                  <tr><td colSpan="3" className="p-4 text-center text-gray-500">{searchTerm ? 'No matches found.' : 'No students found.'}</td></tr>
                 )}
               </tbody>
             </table>
