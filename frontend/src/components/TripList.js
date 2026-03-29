@@ -312,7 +312,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
         }
 
         // Assuming the route is /api/auth/profile based on controller structure
-        await axios.put('http://localhost:5000/api/auth/profile', { profileImage: base64Image }, {
+        await axios.put('http://localhost:5001/api/auth/profile', { profileImage: base64Image }, {
           headers: { 
             'x-auth-token': token,
             'Authorization': `Bearer ${token}`
@@ -334,6 +334,11 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
   };
 
   const handleSaveProfile = async () => {
+    if (!gender || !age || !year || !semester) {
+      alert('Please complete all profile fields before saving.');
+      return;
+    }
+
     try {
       let token = localStorage.getItem('token') || 
                   localStorage.getItem('authToken') || 
@@ -351,7 +356,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
         }
       }
 
-      await axios.put('http://localhost:5000/api/auth/profile', { 
+      await axios.put('http://localhost:5001/api/auth/profile', { 
         gender, age, year, semester 
       }, {
         headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
@@ -601,7 +606,9 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
           {/* Profile Details Inputs */}
           <div className="w-full space-y-3 mb-6">
             <div>
-              <label className="text-gray-400 text-xs block mb-1">Gender</label>
+              <label className="text-gray-400 text-xs block mb-1">
+                Gender <span className="text-red-500">*</span>
+              </label>
               <select 
                 value={gender} 
                 onChange={(e) => setGender(e.target.value)}
@@ -613,7 +620,9 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
               </select>
             </div>
             <div>
-              <label className="text-gray-400 text-xs block mb-1">Age</label>
+              <label className="text-gray-400 text-xs block mb-1">
+                Age <span className="text-red-500">*</span>
+              </label>
               <input 
                 type="number" 
                 value={age} 
@@ -624,10 +633,14 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
             </div>
             <div className="flex gap-2">
               <div className="w-1/2">
-                <label className="text-gray-400 text-xs block mb-1">Year</label>
+                <label className="text-gray-400 text-xs block mb-1">
+                  Year <span className="text-red-500">*</span>
+                </label>
                 <select 
                   value={year} 
                   onChange={(e) => setYear(e.target.value)}
+                  required
+                  aria-required="true"
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">Year</option>
@@ -638,10 +651,14 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
                 </select>
               </div>
               <div className="w-1/2">
-                <label className="text-gray-400 text-xs block mb-1">Sem</label>
+                <label className="text-gray-400 text-xs block mb-1">
+                  Sem <span className="text-red-500">*</span>
+                </label>
                 <select 
                   value={semester} 
                   onChange={(e) => setSemester(e.target.value)}
+                  required
+                  aria-required="true"
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">Sem</option>
