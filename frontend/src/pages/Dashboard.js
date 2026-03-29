@@ -8,6 +8,7 @@ const Dashboard = ({ user }) => {
   const [dropSearch, setDropSearch] = useState('');
   const [vehicleFilter, setVehicleFilter] = useState('All');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [balance, setBalance] = useState(2500);
 
   if (!user || !user.userId) {
     return (
@@ -31,7 +32,7 @@ const Dashboard = ({ user }) => {
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header Section */}
         <div className="mb-10 bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl border border-gray-700/50 shadow-2xl backdrop-blur-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div className="flex-grow">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -55,16 +56,31 @@ const Dashboard = ({ user }) => {
                 <span className="text-gray-300 text-sm">Welcome back, <span className="text-emerald-400 font-semibold">{user.userId}</span></span>
               </div>
             </div>
-            
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-emerald-500/50 transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Post a Trip</span>
-            </button>
+
+            <div className="flex flex-col items-stretch gap-4 w-full lg:w-auto">
+              <div className="flex items-center gap-4 bg-gray-700/40 border border-gray-600 rounded-xl px-5 py-3 shadow-lg backdrop-blur-sm">
+                <button
+                  onClick={() => setBalance((prev) => prev + 500)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+                >
+                  Recharge
+                </button>
+
+                <div className="bg-red-500 px-4 py-2 rounded-lg text-white font-bold text-lg shadow-inner">
+                  {balance}
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-emerald-500/50 transform hover:scale-105 flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Post a Trip</span>
+              </button>
+            </div>
           </div>
         </div>
         
