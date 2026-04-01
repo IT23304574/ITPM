@@ -14,14 +14,24 @@ const RegistrationRequestForm = () => {
 
   const { studentId, message } = formData;
 
-  const onChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    if (name === 'studentId') {
+      if (value.length > 0 && !value.toUpperCase().startsWith('IT')) {
+        setStatus((prev) => ({ ...prev, error: 'Student ID must start with "IT" or "it"' }));
+      } else {
+        setStatus((prev) => ({ ...prev, error: null }));
+      }
+    }
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setStatus({ loading: true, error: null, success: null });
 
-    if (!studentId.match(/^IT\d{8}$/)) {
+    if (!studentId.match(/^[iI][tT]\d{8}$/)) {
         setStatus({ loading: false, error: 'Please enter a valid IT number (e.g., IT23304574).', success: null });
         return;
     }
