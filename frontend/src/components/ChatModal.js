@@ -13,9 +13,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   // Constants for validation
   const MAX_MESSAGE_LENGTH = 20;
   const MIN_MESSAGE_LENGTH = 1;
-  const MAX_MESSAGES_PER_MINUTE = 5; // 5 messages per minute
-
-  const [messageTimestamps, setMessageTimestamps] = useState([]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -38,7 +35,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     return token;
   }, []);
 
-  // ✅ Validation 1, 2, 3: Empty message, Min 1 char, Max 20 chars
+  // Validation: Empty message, Min 1 char, Max 20 chars
   const validateMessage = (message) => {
     const trimmed = message.trim();
     
@@ -55,26 +52,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     // Maximum 20 characters validation
     if (trimmed.length > MAX_MESSAGE_LENGTH) {
       return { isValid: false, error: `Message too long! Max ${MAX_MESSAGE_LENGTH} characters only` };
-    }
-    
-    return { isValid: true, error: null };
-  };
-
-  // ✅ Validation 4: 5 messages per minute
-  const validateRateLimit = () => {
-    const now = Date.now();
-    
-    // Get messages sent in the last 60 seconds
-    const recentMessages = messageTimestamps.filter(
-      timestamp => now - timestamp < 60000
-    );
-    
-    // Check if user exceeded 5 messages per minute
-    if (recentMessages.length >= MAX_MESSAGES_PER_MINUTE) {
-      return { 
-        isValid: false, 
-        error: `You can only send ${MAX_MESSAGES_PER_MINUTE} messages per minute. Please wait a moment.` 
-      };
     }
     
     return { isValid: true, error: null };
@@ -116,18 +93,11 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     const rawMessage = newMessage;
     const trimmed = rawMessage.trim();
     
-    // ✅ Content validation (empty, min 1, max 20)
+    // Content validation (empty, min 1, max 20)
     const contentValidation = validateMessage(rawMessage);
     if (!contentValidation.isValid) {
       setError(contentValidation.error);
       inputRef.current?.focus();
-      return;
-    }
-    
-    // ✅ Rate limit validation (5 messages per minute)
-    const rateValidation = validateRateLimit();
-    if (!rateValidation.isValid) {
-      setError(rateValidation.error);
       return;
     }
     
@@ -145,10 +115,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
         setSending(false);
         return;
       }
-      
-      // Record this message timestamp
-      const now = Date.now();
-      setMessageTimestamps(prev => [...prev, now]);
       
       await axios.post(
         `http://localhost:5000/api/trips/${tripId}/chat`,
@@ -223,18 +189,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
   
-  // Clean up old timestamps
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      setMessageTimestamps(prev => 
-        prev.filter(timestamp => now - timestamp < 60000)
-      );
-    }, 30000);
-    
-    return () => clearInterval(cleanupInterval);
-  }, []);
-  
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (isOpen && e.key === 'Escape') {
@@ -288,7 +242,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
           ) : messages.length === 0 ? (
             <div className="text-center p-4">
               <p className="text-gray-500 text-sm">✨ No messages yet. Say hi!</p>
-              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters • 5 messages per minute</p>
+              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters</p>
             </div>
           ) : (
             <>
@@ -392,8 +346,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
             <span className="text-emerald-500">✨ {MIN_MESSAGE_LENGTH}-{MAX_MESSAGE_LENGTH} characters</span>
             <span className="text-gray-600 mx-2">•</span>
             <span className="text-gray-500">⏎ Press Enter to send</span>
-            <span className="text-gray-600 mx-2">•</span>
-            <span className="text-yellow-500">⏰ {MAX_MESSAGES_PER_MINUTE} messages per minute</span>
           </div>
         </form>
       </div>
