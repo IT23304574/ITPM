@@ -4,11 +4,17 @@ exports.createRecharge = async (req, res) => {
   try {
     const { name, studentId, amount } = req.body;
 
+    let proof = null;
+    if (req.file) {
+      // Convert buffer to base64 string
+      proof = req.file.buffer.toString('base64');
+    }
+
     const newRecharge = new Recharge({
       name,
       studentId,
       amount,
-      proof: req.file ? req.file.path : null,
+      proof,
     });
 
     await newRecharge.save();
