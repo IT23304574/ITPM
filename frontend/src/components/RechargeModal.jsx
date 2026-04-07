@@ -16,6 +16,8 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
 
     if (!formData.name.trim()) {
       newErrors.name = "Name is required.";
+    } else if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) {
+      newErrors.name = "Name must contain only letters and spaces.";
     }
 
     if (!formData.studentId.trim()) {
@@ -51,6 +53,23 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const newErrors = { ...errors };
+
+    if (name === 'name') {
+      if (!value.trim()) {
+        newErrors.name = "Name is required.";
+      } else if (!/^[a-zA-Z\s]+$/.test(value.trim())) {
+        newErrors.name = "Name must contain only letters and spaces.";
+      } else {
+        delete newErrors.name;
+      }
+    }
+
+    setErrors(newErrors);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -76,6 +95,7 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
             placeholder="Enter your full name"
             value={formData.name}
             onChange={handleChange}
+            onBlur={handleBlur}
             required
           />
           {errors.name && <span style={styles.error}>{errors.name}</span>}
