@@ -7,17 +7,12 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
-  const [lastSendTime, setLastSendTime] = useState(0);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Constants for validation - MAX 20 CHARACTERS
-  const MAX_MESSAGE_LENGTH = 20;  // Changed to 20
+  // Constants for validation
+  const MAX_MESSAGE_LENGTH = 20;
   const MIN_MESSAGE_LENGTH = 1;
-  const RATE_LIMIT_MS = 1000;
-  const MAX_MESSAGES_PER_MINUTE = 10;
-
-  const [messageTimestamps, setMessageTimestamps] = useState([]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,62 +35,23 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     return token;
   }, []);
 
-  // Sanitize message
-  const sanitizeMessage = (message) => {
-    return message
-      .replace(/[<>]/g, '')
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;')
-      .trim()
-      .slice(0, MAX_MESSAGE_LENGTH); // Enforce max length
-  };
-
-  // Validate message content - MAX 20 CHARACTERS
+  // Validation: Empty message, Min 1 char, Max 20 chars
   const validateMessage = (message) => {
     const trimmed = message.trim();
     
+    // Empty message validation
     if (!trimmed) {
       return { isValid: false, error: "Message cannot be empty" };
     }
     
+    // Minimum 1 character validation
     if (trimmed.length < MIN_MESSAGE_LENGTH) {
       return { isValid: false, error: `Message must be at least ${MIN_MESSAGE_LENGTH} character` };
     }
     
-    // MAX 20 CHARACTERS VALIDATION
+    // Maximum 20 characters validation
     if (trimmed.length > MAX_MESSAGE_LENGTH) {
       return { isValid: false, error: `Message too long! Max ${MAX_MESSAGE_LENGTH} characters only` };
-    }
-    
-    if (/^\s+$/.test(trimmed)) {
-      return { isValid: false, error: "Message cannot be only spaces" };
-    }
-    
-    return { isValid: true, error: null };
-  };
-
-  // Rate limiting validation
-  const validateRateLimit = () => {
-    const now = Date.now();
-    
-    const recentMessages = messageTimestamps.filter(
-      timestamp => now - timestamp < 60000
-    );
-    
-    if (recentMessages.length >= MAX_MESSAGES_PER_MINUTE) {
-      return { 
-        isValid: false, 
-        error: `Please wait before sending more messages` 
-      };
-    }
-    
-    if (now - lastSendTime < RATE_LIMIT_MS) {
-      const waitTime = Math.ceil((RATE_LIMIT_MS - (now - lastSendTime)) / 1000);
-      return { 
-        isValid: false, 
-        error: `Please wait ${waitTime} second(s)` 
-      };
     }
     
     return { isValid: true, error: null };
@@ -119,11 +75,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
       );
 
       if (res.data && Array.isArray(res.data)) {
-        setMessages(prev => {
-          return JSON.stringify(prev) !== JSON.stringify(res.data)
-            ? res.data
-            : prev;
-        });
+        setMessages(res.data);
         setError('');
       }
     } catch (err) {
@@ -138,21 +90,14 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     
     setError('');
     
-    const trimmed = newMessage.trim();
-    const sanitized = sanitizeMessage(trimmed);
+    const rawMessage = newMessage;
+    const trimmed = rawMessage.trim();
     
-    // Content validation
-    const contentValidation = validateMessage(sanitized);
+    // Content validation (empty, min 1, max 20)
+    const contentValidation = validateMessage(rawMessage);
     if (!contentValidation.isValid) {
       setError(contentValidation.error);
       inputRef.current?.focus();
-      return;
-    }
-    
-    // Rate limiting validation
-    const rateValidation = validateRateLimit();
-    if (!rateValidation.isValid) {
-      setError(rateValidation.error);
       return;
     }
     
@@ -171,13 +116,9 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
         return;
       }
       
-      const now = Date.now();
-      setLastSendTime(now);
-      setMessageTimestamps(prev => [...prev, now]);
-      
       await axios.post(
         `http://localhost:5000/api/trips/${tripId}/chat`,
-        { message: sanitized },
+        { message: trimmed },
         {
           headers: {
             'x-auth-token': token,
@@ -205,24 +146,15 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   const handleInputChange = (e) => {
     let value = e.target.value;
     
-    // Enforce MAX 20 CHARACTERS at input level
+    // Enforce max 20 characters at input level
     if (value.length > MAX_MESSAGE_LENGTH) {
       value = value.slice(0, MAX_MESSAGE_LENGTH);
     }
     
     setNewMessage(value);
     
+    // Clear error when user starts typing
     if (error) {
-      setError('');
-    }
-    
-    // Show warning when near limit
-    if (value.length === MAX_MESSAGE_LENGTH) {
-      setError(`Max ${MAX_MESSAGE_LENGTH} characters reached`);
-    } else if (value.length >= MAX_MESSAGE_LENGTH - 3) {
-      setError(`${MAX_MESSAGE_LENGTH - value.length} characters remaining`);
-    } else if (error === `Max ${MAX_MESSAGE_LENGTH} characters reached` || 
-               error?.includes('remaining')) {
       setError('');
     }
   };
@@ -258,17 +190,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   }, [messages, scrollToBottom]);
   
   useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      setMessageTimestamps(prev => 
-        prev.filter(timestamp => now - timestamp < 60000)
-      );
-    }, 30000);
-    
-    return () => clearInterval(cleanupInterval);
-  }, []);
-  
-  useEffect(() => {
     const handleKeyPress = (e) => {
       if (isOpen && e.key === 'Escape') {
         onClose();
@@ -282,7 +203,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   if (!isOpen) return null;
   
   const charCount = newMessage.length;
-  const isNearLimit = charCount >= MAX_MESSAGE_LENGTH - 5;
   const isAtLimit = charCount >= MAX_MESSAGE_LENGTH;
   
   return (
@@ -291,7 +211,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
         
         {/* Header */}
         <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-2xl">
-          <h3 className="text-white font-bold text-lg">Trip Chat</h3>
+          <h3 className="text-white font-bold text-lg">💬 Trip Chat</h3>
           <button 
             onClick={onClose} 
             className="text-gray-400 hover:text-white text-2xl transition-colors"
@@ -321,8 +241,8 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
             </div>
           ) : messages.length === 0 ? (
             <div className="text-center p-4">
-              <p className="text-gray-500 text-sm">No messages yet. Say hi!</p>
-              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters per message</p>
+              <p className="text-gray-500 text-sm">✨ No messages yet. Say hi!</p>
+              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters</p>
             </div>
           ) : (
             <>
@@ -342,7 +262,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
                     >
                       {!isMe && (
                         <div className="text-xs text-emerald-400 font-bold mb-1">
-                          {msg.sender?.studentId || 'User'}
+                          👤 {msg.sender?.studentId || 'User'}
                         </div>
                       )}
                       <p className="text-sm break-words whitespace-pre-wrap">
@@ -353,7 +273,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
                           isMe ? 'text-emerald-200' : 'text-gray-400'
                         }`}
                       >
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                        🕐 {new Date(msg.timestamp).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
@@ -367,25 +287,25 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
           <div ref={messagesEndRef} />
         </div>
         
-        {/* Input Area - MAX 20 CHARACTERS */}
+        {/* Input Area */}
         <form
           onSubmit={handleSend}
           className="p-4 border-t border-gray-700 bg-gray-900 rounded-b-2xl"
         >
-          {/* Character counter and error display */}
+          {/* Error message display */}
           <div className="flex justify-between items-center mb-2 px-2">
             <div className="text-xs">
               {error ? (
                 <span className="text-red-400">{error}</span>
               ) : (
                 <span className="text-gray-400">
-                  {sending && <span className="inline-block animate-pulse">Sending...</span>}
+                  {sending && <span className="inline-block animate-pulse">⏳ Sending...</span>}
                 </span>
               )}
             </div>
             <div className="text-xs font-mono">
-              <span className={isAtLimit ? 'text-red-400 font-bold' : (isNearLimit ? 'text-yellow-400' : 'text-gray-400')}>
-                {charCount}/{MAX_MESSAGE_LENGTH}
+              <span className={isAtLimit ? 'text-red-400 font-bold' : 'text-gray-400'}>
+                📝 {charCount}/{MAX_MESSAGE_LENGTH}
               </span>
             </div>
           </div>
@@ -397,7 +317,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
               value={newMessage}
               onChange={handleInputChange}
               maxLength={MAX_MESSAGE_LENGTH}
-              placeholder={`Type message (max ${MAX_MESSAGE_LENGTH} chars)...`}
+              placeholder={`Type message (${MIN_MESSAGE_LENGTH}-${MAX_MESSAGE_LENGTH} chars)...`}
               disabled={sending}
               className={`flex-1 bg-gray-700 text-white border rounded-full px-4 py-2 focus:outline-none focus:border-emerald-500 transition-colors ${
                 error && !sending ? 'border-red-500' : 'border-gray-600'
@@ -405,7 +325,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || sending || isAtLimit}
+              disabled={!newMessage.trim() || sending}
               className={`bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 sending ? 'animate-pulse' : ''
               }`}
@@ -421,11 +341,11 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
             </button>
           </div>
           
-          {/* MAX 20 CHARACTERS HINT */}
+          {/* Rules display */}
           <div className="text-xs text-center mt-2">
-            <span className="text-emerald-500">🔴 Max {MAX_MESSAGE_LENGTH} characters only</span>
+            <span className="text-emerald-500">✨ {MIN_MESSAGE_LENGTH}-{MAX_MESSAGE_LENGTH} characters</span>
             <span className="text-gray-600 mx-2">•</span>
-            <span className="text-gray-500">Press Enter to send</span>
+            <span className="text-gray-500">⏎ Press Enter to send</span>
           </div>
         </form>
       </div>

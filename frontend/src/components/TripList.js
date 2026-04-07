@@ -64,7 +64,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
   const [year, setYear] = useState(localStorage.getItem(`year_${userId}`) || '');
   const [semester, setSemester] = useState(localStorage.getItem(`semester_${userId}`) || '');
 
-  // Sync profile details to localStorage (specific key for persistence, generic key for CreateTripModal access)
+  // Sync profile details to localStorage
   useEffect(() => {
     localStorage.setItem(`gender_${userId}`, gender);
     localStorage.setItem('user_profile_gender', gender);
@@ -98,7 +98,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
     if (window.confirm('Are you sure you want to cancel this trip?')) {
       try {
         await deleteTrip(tripId);
-        fetchTrips(); // Refresh list after deletion
+        fetchTrips();
       } catch (err) {
         alert(err.response?.data?.msg || 'Failed to cancel trip');
       }
@@ -149,16 +149,13 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
         setProfileImage(base64Image);
         localStorage.setItem(`profileImage_${userId}`, base64Image);
 
-        // Try to retrieve token from localStorage or sessionStorage
         let token = localStorage.getItem('token') || 
                       localStorage.getItem('authToken') || 
                       sessionStorage.getItem('token');
         
-        // Ensure token is valid and not a string "undefined" or "null"
         if (token === 'undefined' || token === 'null') token = null;
 
         if (!token) {
-          // Fallback: Check if token is inside the 'user' object in localStorage
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
@@ -177,7 +174,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
           return;
         }
 
-        // Assuming the route is /api/auth/profile based on controller structure
         await axios.put('http://localhost:5000/api/auth/profile', { profileImage: base64Image }, {
           headers: { 
             'x-auth-token': token,
@@ -223,7 +219,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
         headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
       });
       alert('Profile details saved successfully!');
-      fetchTrips(); // Refresh the list to show the new details (like Gender) immediately
+      fetchTrips();
     } catch (err) {
       console.error('Failed to save profile:', err);
       alert('Failed to save profile details.');
@@ -231,12 +227,11 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
   };
 
   const filteredTrips = trips.filter(trip => {
-    const matchesPickup = !pickupSearch || (trip.startLocation?.toLowerCase().includes(pickupSearch.toLowerCase()));
-    const matchesDrop = !dropSearch || (trip.destination?.toLowerCase().includes(dropSearch.toLowerCase()));
+    const matchesPickup = !pickupSearch || (trip.startLocation?.toLowerCase().includes(pickupSearch.toLowerCase().trim()));
+    const matchesDrop = !dropSearch || (trip.destination?.toLowerCase().includes(dropSearch.toLowerCase().trim()));
     
     const matchesVehicle = vehicleFilter === 'All' || !vehicleFilter || trip.vehicleType === vehicleFilter;
 
-    // Filter for available seats if the toggle is on
     const availableSeats = trip.maxSeats - 1 - (trip.joinedStudents?.length || 0);
     const hasAvailableSeats = !showAvailableOnly || availableSeats > 0;
 
@@ -256,11 +251,23 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
       );
     }
 
-    if (filteredTrips.length === 0 && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All'))) {
+    if (filteredTrips.length === 0 && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All') || showAvailableOnly)) {
+      let noResultsMessage = "No matching trips found.";
+      
+      if (showAvailableOnly && !pickupSearch && !dropSearch && (vehicleFilter === 'All' || !vehicleFilter)) {
+        noResultsMessage = "No trips with available seats at the moment. Try disabling 'Show only rides with available seats' to see all trips.";
+      } else if (showAvailableOnly && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All'))) {
+        noResultsMessage = "No trips match your search criteria with available seats. Try broadening your search or disabling the available seats filter.";
+      } else if (pickupSearch || dropSearch) {
+        noResultsMessage = "No trips match your location search. Try different pickup or drop locations.";
+      } else if (vehicleFilter && vehicleFilter !== 'All') {
+        noResultsMessage = `No trips found for ${vehicleFilter} vehicles. Try selecting a different vehicle type.`;
+      }
+      
       return (
         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-6 text-center">
           <h3 className="text-xl font-bold text-white mb-2">No Matching Trips Found</h3>
-          <p className="text-gray-400">Try a different search term.</p>
+          <p className="text-gray-400">{noResultsMessage}</p>
         </div>
       );
     }
@@ -272,7 +279,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
           const isJoined = trip.joinedStudents?.some(student =>
             ((student?.user?._id || student?.user) || (student?._id || student))?.toString() === userId
           ) || false;
-          // Organizer takes 1 seat, so subtract 1 from maxSeats
           const availableSeats = trip.maxSeats - 1 - (trip.joinedStudents?.length || 0);
 
           return (
@@ -308,7 +314,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
                     </div>
                   </div>
                   
-                  {/* Display Organizer Details */}
                   {(trip.organizerGender || trip.organizerAge || trip.organizerYear) && (
                     <div className="mt-2 mb-2 p-3 bg-gray-700 rounded-lg border border-gray-600 text-sm">
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -345,14 +350,12 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
                   <p><span className="font-semibold text-gray-400">Seats:</span> <span className={availableSeats > 0 ? 'text-green-400' : 'text-red-400'}>{availableSeats} available</span> / {trip.maxSeats}</p>
                 </div>
 
-                {/* Show Joined Students to Organizer */}
                 {isOrganizer && trip.joinedStudents && trip.joinedStudents.length > 0 && (
                   <div className="mt-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
                     <h4 className="text-emerald-400 font-bold text-sm mb-2">Joined Students:</h4>
                     <div className="space-y-2">
                       {trip.joinedStudents.map((student, idx) => {
                         if (!student) return null;
-                        // Handle both object structure (with phone) and simple user object (without phone)
                         const studentId = student.user?.studentId || student.studentId || 'Student';
                         const gender = student.user?.gender || student.gender;
                         const studentImage = student.user?.profileImage || student.profileImage;
@@ -381,7 +384,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
                   </div>
                 )}
 
-                {/* Chat Button for Participants */}
                 {(isOrganizer || isJoined) && (
                   <button
                     onClick={() => { setChatTripId(trip._id); setChatOpen(true); }}
