@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import TripList from '../components/TripList';
 import CreateTripModal from '../components/CreateTripModal';
+import RechargeModal from '../components/RechargeModal';
 
 const Dashboard = ({ user }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -8,7 +9,8 @@ const Dashboard = ({ user }) => {
   const [dropSearch, setDropSearch] = useState('');
   const [vehicleFilter, setVehicleFilter] = useState('All');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [balance, setBalance] = useState(2500);
+  const [balance, setBalance] = useState(1000);
+  const [isRechargeOpen, setIsRechargeOpen] = useState(false);
 
   if (!user || !user.userId) {
     return (
@@ -60,7 +62,7 @@ const Dashboard = ({ user }) => {
             <div className="flex flex-col items-stretch gap-4 w-full lg:w-auto">
               <div className="flex items-center gap-4 bg-gray-700/40 border border-gray-600 rounded-xl px-5 py-3 shadow-lg backdrop-blur-sm">
                 <button
-                  onClick={() => setBalance((prev) => prev + 500)}
+                  onClick={() => setIsRechargeOpen(true)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
                 >
                   Recharge
@@ -251,6 +253,18 @@ const Dashboard = ({ user }) => {
         <CreateTripModal 
           onClose={() => setIsModalOpen(false)} 
           onTripCreated={() => setRefreshKey(prevKey => prevKey + 1)} 
+        />
+      )}
+
+      {isRechargeOpen && (
+        <RechargeModal
+          isOpen={isRechargeOpen}
+          onClose={() => setIsRechargeOpen(false)}
+          onSubmit={(formData) => {
+            const amount = Number(formData.amount) || 0;
+            setBalance((prev) => prev + amount);
+            setIsRechargeOpen(false);
+          }}
         />
       )}
     </div>
