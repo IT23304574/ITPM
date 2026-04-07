@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -8,6 +9,8 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
     proof: null,
   });
   const [errors, setErrors] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
@@ -70,16 +73,65 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
     setErrors(newErrors);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (onSubmit) {
-      onSubmit(formData);
+    setLoading(true);
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('studentId', formData.studentId);
+      formDataToSend.append('amount', formData.amount);
+      if (formData.proof) {
+        formDataToSend.append('proof', formData.proof);
+      }
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = user.token;
+
+      await axios.post('http://localhost:5001/api/recharge', formDataToSend, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setSubmitted(true);
+    } catch (error) {
+      alert(error.response?.data?.message || "An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    console.log(formData);
+  };
+
+  const handleCloseModal = () => {
+    setSubmitted(false);
+    setFormData({ name: "", studentId: "", amount: "", proof: null });
+    setErrors({});
     onClose();
   };
+
+  if (submitted) {
+    return (
+      <div style={styles.overlay}>
+        <div style={styles.modal}>
+          <h2 style={styles.title}>Payment Verification</h2>
+          <div style={styles.messageContainer}>
+            <svg style={styles.checkIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p style={styles.messageText}>Your recharge request has been submitted successfully!</p>
+            <p style={styles.verificationText}>Your payment is pending verification. Once verified, the amount will be added to your wallet.</p>
+          </div>
+          <button onClick={handleCloseModal} style={styles.closeBtn}>
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.overlay}>
@@ -138,10 +190,10 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
           {errors.proof && <span style={styles.error}>{errors.proof}</span>}
 
           <div style={styles.actions}>
-            <button type="submit" style={styles.uploadBtn}>
-              Upload
+            <button type="submit" style={styles.uploadBtn} disabled={loading}>
+              {loading ? "Submitting..." : "Upload"}
             </button>
-            <button type="button" onClick={onClose} style={styles.cancelBtn}>
+            <button type="button" onClick={handleCloseModal} style={styles.cancelBtn}>
               Cancel
             </button>
           </div>
@@ -214,5 +266,41 @@ const styles = {
     fontSize: "0.9rem",
     marginTop: "4px",
     marginBottom: "8px",
+  },
+  messageContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "15px",
+    marginBottom: "20px",
+  },
+  checkIcon: {
+    width: "60px",
+    height: "60px",
+    color: "#4ade80",
+  },
+  messageText: {
+    fontSize: "1.1rem",
+    fontWeight: "600",
+    textAlign: "center",
+    margin: "0",
+    color: "#fff",
+  },
+  verificationText: {
+    fontSize: "0.95rem",
+    textAlign: "center",
+    margin: "0",
+    color: "#cbd5e1",
+  },
+  closeBtn: {
+    width: "100%",
+    background: "#4ade80",
+    color: "#000",
+    border: "none",
+    padding: "12px",
+    borderRadius: "8px",
+    fontWeight: "600",
+    cursor: "pointer",
+    fontSize: "1rem",
   },
 };
