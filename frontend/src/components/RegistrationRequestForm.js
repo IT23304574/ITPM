@@ -19,28 +19,19 @@ const RegistrationRequestForm = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
 
-    // Live validation for the Student ID prefix
     if (name === 'studentId') {
-      if (value !== '' && !value.toLowerCase().startsWith('it')) {
-        setStatus(prev => ({ ...prev, error: 'registration number must start with IT or it', success: null }));
+      if (value.length > 0 && !value.toUpperCase().startsWith('IT')) {
+        setStatus((prev) => ({ ...prev, error: 'Student ID must start with "IT" or "it"' }));
       } else {
-        setStatus(prev => ({ ...prev, error: null }));
+        setStatus((prev) => ({ ...prev, error: null }));
       }
     }
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-
-    // Final check for prefix before submission
-    if (!studentId.toLowerCase().startsWith('it')) {
-      setStatus({ loading: false, error: 'registration number must start with IT or it', success: null });
-      return;
-    }
-
     setStatus({ loading: true, error: null, success: null });
 
-    // Validate full format (allowing it/IT prefix + 8 digits)
     if (!studentId.match(/^[iI][tT]\d{8}$/)) {
         setStatus({ loading: false, error: 'Please enter a valid IT number (e.g., IT23304574).', success: null });
         return;

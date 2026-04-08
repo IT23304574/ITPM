@@ -37,10 +37,6 @@ const userSchema = new mongoose.Schema(
     },
     semester: {
       type: String
-    },
-    isBlocked: {
-      type: Boolean,
-      default: false
     }
   },
   {
