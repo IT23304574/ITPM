@@ -35,13 +35,47 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     return token;
   }, []);
 
-  // Validation: Empty message, Min 1 char, Max 20 chars
+  // Validation: Check for special characters
+  const hasSpecialCharacters = (message) => {
+    const specialCharsPattern = /[\[\]';\/.,<>?:"{}|`~!@#$%^&*()_+=\\]/;
+    return specialCharsPattern.test(message);
+  };
+
+  // Get special characters found in message
+  const getSpecialCharacters = (message) => {
+    const specialCharsPattern = /[\[\]';\/.,<>?:"{}|`~!@#$%^&*()_+=\\]/g;
+    const found = message.match(specialCharsPattern);
+    if (found) {
+      const unique = [...new Set(found)];
+      return unique.join(', ');
+    }
+    return '';
+  };
+
+  // Remove special characters from message
+  const removeSpecialCharacters = (message) => {
+    const specialCharsPattern = /[\[\]';\/.,<>?:"{}|`~!@#$%^&*()_+=\\]/g;
+    return message.replace(specialCharsPattern, '');
+  };
+
+  // Validation: Empty message, Min 1 char, Max 20 chars, No special characters
   const validateMessage = (message) => {
     const trimmed = message.trim();
     
     // Empty message validation
     if (!trimmed) {
       return { isValid: false, error: "Message cannot be empty" };
+    }
+    
+    // Check for special characters
+    if (hasSpecialCharacters(trimmed)) {
+      const specialChars = getSpecialCharacters(trimmed);
+      return { 
+        isValid: false, 
+        error: `Cannot send message with special characters: ${specialChars}. Please use only letters, numbers, and spaces.`,
+        hasSpecialChars: true,
+        cleanedMessage: removeSpecialCharacters(trimmed)
+      };
     }
     
     // Minimum 1 character validation
@@ -54,7 +88,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
       return { isValid: false, error: `Message too long! Max ${MAX_MESSAGE_LENGTH} characters only` };
     }
     
-    return { isValid: true, error: null };
+    return { isValid: true, error: null, cleanedMessage: trimmed };
   };
 
   // Fetch messages
@@ -93,10 +127,22 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     const rawMessage = newMessage;
     const trimmed = rawMessage.trim();
     
-    // Content validation (empty, min 1, max 20)
+    // Content validation (empty, min 1, max 20, no special chars)
     const contentValidation = validateMessage(rawMessage);
     if (!contentValidation.isValid) {
       setError(contentValidation.error);
+      
+      // If message has special characters, offer to clean it
+      if (contentValidation.hasSpecialChars && contentValidation.cleanedMessage) {
+        // Auto-clean the message and show suggestion
+        const cleanedMsg = contentValidation.cleanedMessage;
+        if (cleanedMsg.length > 0) {
+          setError(`${contentValidation.error} Would you like to send "${cleanedMsg}" instead?`);
+          // Store cleaned message for suggestion
+          setNewMessage(cleanedMsg);
+        }
+      }
+      
       inputRef.current?.focus();
       return;
     }
@@ -116,9 +162,12 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
         return;
       }
       
+      // Send cleaned message
+      const messageToSend = contentValidation.cleanedMessage || trimmed;
+      
       await axios.post(
         `http://localhost:5000/api/trips/${tripId}/chat`,
-        { message: trimmed },
+        { message: messageToSend },
         {
           headers: {
             'x-auth-token': token,
@@ -142,9 +191,21 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     }
   };
 
-  // Handle input change with max length enforcement
+  // Handle input change with max length enforcement and special character blocking
   const handleInputChange = (e) => {
     let value = e.target.value;
+    
+    // Block special characters while typing
+    const specialCharsPattern = /[\[\]';\/.,<>?:"{}|`~!@#$%^&*()_+=\\]/;
+    if (specialCharsPattern.test(value)) {
+      // Show temporary error but don't block typing completely
+      setError('Special characters like [ ] \' ; / . , are not allowed');
+      setTimeout(() => {
+        if (error === 'Special characters like [ ] \' ; / . , are not allowed') {
+          setError('');
+        }
+      }, 2000);
+    }
     
     // Enforce max 20 characters at input level
     if (value.length > MAX_MESSAGE_LENGTH) {
@@ -153,8 +214,8 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     
     setNewMessage(value);
     
-    // Clear error when user starts typing
-    if (error) {
+    // Clear general error when user starts typing
+    if (error && !error.includes('Special characters')) {
       setError('');
     }
   };
@@ -204,6 +265,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   
   const charCount = newMessage.length;
   const isAtLimit = charCount >= MAX_MESSAGE_LENGTH;
+  const hasSpecialChars = /[\[\]';\/.,<>?:"{}|`~!@#$%^&*()_+=\\]/.test(newMessage);
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
@@ -242,7 +304,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
           ) : messages.length === 0 ? (
             <div className="text-center p-4">
               <p className="text-gray-500 text-sm">✨ No messages yet. Say hi!</p>
-              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters</p>
+              <p className="text-gray-600 text-xs mt-1">Max {MAX_MESSAGE_LENGTH} characters • No special characters allowed</p>
             </div>
           ) : (
             <>
@@ -317,15 +379,15 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
               value={newMessage}
               onChange={handleInputChange}
               maxLength={MAX_MESSAGE_LENGTH}
-              placeholder={`Type message (${MIN_MESSAGE_LENGTH}-${MAX_MESSAGE_LENGTH} chars)...`}
+              placeholder={`Type message (${MIN_MESSAGE_LENGTH}-${MAX_MESSAGE_LENGTH} chars, no special chars)...`}
               disabled={sending}
               className={`flex-1 bg-gray-700 text-white border rounded-full px-4 py-2 focus:outline-none focus:border-emerald-500 transition-colors ${
-                error && !sending ? 'border-red-500' : 'border-gray-600'
+                error && !sending ? 'border-red-500' : hasSpecialChars ? 'border-yellow-500' : 'border-gray-600'
               } ${sending ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             <button
               type="submit"
-              disabled={!newMessage.trim() || sending}
+              disabled={!newMessage.trim() || sending || hasSpecialChars}
               className={`bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 sending ? 'animate-pulse' : ''
               }`}
@@ -346,7 +408,16 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
             <span className="text-emerald-500">✨ {MIN_MESSAGE_LENGTH}-{MAX_MESSAGE_LENGTH} characters</span>
             <span className="text-gray-600 mx-2">•</span>
             <span className="text-gray-500">⏎ Press Enter to send</span>
+            <span className="text-gray-600 mx-2">•</span>
+            <span className="text-yellow-500">🚫 No special characters</span>
           </div>
+          
+          {/* Special characters warning */}
+          {hasSpecialChars && (
+            <div className="text-xs text-center mt-1 text-yellow-500">
+              ⚠️ Remove special characters like [ ] ' ; / . , to send message
+            </div>
+          )}
         </form>
       </div>
     </div>
