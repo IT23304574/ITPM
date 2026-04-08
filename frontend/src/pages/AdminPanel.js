@@ -265,6 +265,7 @@ const AdminPanel = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [darkMode, setDarkMode] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, totalTrips: 0, averageRating: 0, vehicleStats: [], topDestinations: [] });
+  const [contactMessages, setContactMessages] = useState([]);
 
   const theme = {
     bg: darkMode ? '#080b10' : '#f8fafc',
@@ -299,7 +300,20 @@ const AdminPanel = () => {
     catch (err) { console.error('Error fetching stats:', err); }
   };
 
-  useEffect(() => { fetchStudents(); fetchStats(); }, []);
+  const fetchContactMessages = async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const token = storedUser?.token;
+      const { data } = await axios.get('http://localhost:5000/api/contact', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setContactMessages(data);
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+    }
+  };
+
+  useEffect(() => { fetchStudents(); fetchStats(); fetchContactMessages(); }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -323,6 +337,21 @@ const AdminPanel = () => {
       setNewPass('');
     } catch (err) {
       setMessage(err.response?.data?.msg || '❌ Error updating password');
+    }
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (!window.confirm('Delete this message?')) return;
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const token = storedUser?.token;
+      await axios.delete(`http://localhost:5000/api/contact/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setContactMessages(prev => prev.filter(m => m._id !== id));
+      setMessage('✅ Message deleted');
+    } catch (err) {
+      console.error('Error deleting message:', err);
     }
   };
 
@@ -1052,6 +1081,75 @@ const AdminPanel = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* ── Section: Support Messages ── */}
+        <div style={{
+          marginTop: '2rem',
+          background: theme.cardBg,
+          border: `1px solid ${theme.border}`,
+          borderRadius: '14px',
+          padding: '1.75rem',
+          position: 'relative',
+        }}>
+          <h2 style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            color: '#3b82f6',
+            textTransform: 'uppercase',
+            marginBottom: '1.5rem',
+          }}>Support Inquiries</h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {contactMessages.map((msg) => (
+              <div key={msg._id} style={{
+                background: theme.bg,
+                border: `1px solid ${theme.border}`,
+                borderRadius: '10px',
+                padding: '1.2rem',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ color: '#00ffa3', fontWeight: 700, fontSize: '0.8rem' }}>{msg.subject}</span>
+                  <button 
+                    onClick={() => handleDeleteMessage(msg._id)}
+                    style={{ background: 'none', border: 'none', color: '#ff4d6d', cursor: 'pointer' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <p style={{ fontSize: '0.85rem', marginBottom: '1rem', color: theme.text }}>{msg.message}</p>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.4rem', 
+                  paddingTop: '0.8rem', 
+                  borderTop: `1px solid ${theme.border}`,
+                  fontSize: '0.7rem'
+                }}>
+                  <div style={{ color: theme.muted }}>
+                    From: <span style={{ color: theme.text }}>{msg.name}</span> ({msg.email})
+                  </div>
+                  {msg.studentId && (
+                    <div style={{ color: '#3b82f6' }}>Student IT: {msg.studentId}</div>
+                  )}
+                  {msg.studentDetails && (
+                    <div style={{ color: '#00ffa3', display: 'flex', gap: '1rem', marginTop: '0.2rem' }}>
+                      <span>Age: {msg.studentDetails.age}</span>
+                      <span>Year: {msg.studentDetails.year}</span>
+                      <span>Sem: {msg.studentDetails.semester}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {contactMessages.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '2rem', color: theme.muted, fontSize: '0.8rem' }}>
+                // No messages to display
+              </div>
+            )}
           </div>
         </div>
 
