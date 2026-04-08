@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 
 const Contact = () => {
   const user = JSON.parse(localStorage.getItem('user'));
@@ -8,8 +7,7 @@ const Contact = () => {
     name: '',
     email: '',
     subject: '',
-    message: '',
-    studentId: user?.studentId || ''
+    message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,15 +22,12 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    try {
-      await axios.post('http://localhost:5000/api/contact', formData);
+    // Simulate form submission
+    setTimeout(() => {
       alert('Thank you for contacting us! We will get back to you soon.');
-      setFormData({ name: '', email: '', subject: '', message: '', studentId: user?.studentId || '' });
-    } catch (err) {
-      alert('Failed to send message. Please try again.');
-    } finally {
+      setFormData({ name: '', email: '', subject: '', message: '' });
       setIsSubmitting(false);
-    }
+    }, 1500);
   };
 
   return (
@@ -155,23 +150,6 @@ const Contact = () => {
                       placeholder="Enter your full name"
                       className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                       required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Student IT Number (Optional)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm font-mono">#</span>
-                    </div>
-                    <input
-                      type="text"
-                      name="studentId"
-                      value={formData.studentId}
-                      onChange={handleChange}
-                      placeholder="e.g. IT21000000"
-                      className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
                     />
                   </div>
                 </div>
