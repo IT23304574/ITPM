@@ -7,7 +7,8 @@ const {
   getAllStudents,
   adminUpdateStudentPassword,
   updateProfile,
-  deleteStudents
+  deleteStudents,
+  toggleBlockStudent
 } = require('../controllers/authController');
 const auth = require('../middleware/auth');
 
@@ -19,6 +20,7 @@ router.post('/admin/register', adminRegister); // consider protecting in real us
 router.post('/change-password', auth, changePassword);
 router.get('/students', auth, getAllStudents);
 router.put('/admin/update-password', auth, adminUpdateStudentPassword);
+router.put('/admin/toggle-block', auth, toggleBlockStudent);
 router.put('/profile', auth, updateProfile);
 router.delete('/students', auth, deleteStudents);
 
