@@ -11,6 +11,27 @@ const Dashboard = ({ user }) => {
   const [showAvailableOnly, setShowAvailableOnly] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [ratingStats, setRatingStats] = useState({ averageRating: 0, ratingCount: 0 });
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const fetchNotifications = async () => {
+    if (!user || !user.studentId) return;
+    try {
+      const { data } = await axios.get(`http://localhost:5000/api/notifications/${user.studentId}`);
+      setNotifications(data);
+    } catch (err) {
+      console.error("Failed to fetch notifications", err);
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
 
   const fetchRatingStats = async () => {
     if (!user || !user.userId) return;
@@ -41,6 +62,7 @@ const Dashboard = ({ user }) => {
 
   useEffect(() => {
     fetchRatingStats();
+    fetchNotifications();
   }, [user]);
 
   if (!user || !user.userId) {
@@ -64,7 +86,7 @@ const Dashboard = ({ user }) => {
 
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header Section */}
-        <div className="mb-10 bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl border border-gray-700/50 shadow-2xl backdrop-blur-sm">
+        <div className="mb-10 bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl border border-gray-700/50 shadow-2xl backdrop-blur-sm relative z-20">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
             <div className="flex-grow">
               <div className="flex items-center gap-3 mb-3">
@@ -91,6 +113,55 @@ const Dashboard = ({ user }) => {
             </div>
             
             <div className="flex flex-col sm:flex-row items-center gap-4">
+              {/* Notification System */}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-3 bg-gray-900/50 hover:bg-gray-700/50 border border-gray-700 rounded-xl transition-all"
+                >
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {notifications.some(n => !n.isRead) && (
+                    <span className="absolute top-2 right-2 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  )}
+                </button>
+                
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fadeInUp">
+                    <div className="p-4 border-b border-gray-700 bg-gray-900/50">
+                      <h3 className="font-bold text-white text-sm uppercase tracking-wider">Admin Notifications</h3>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                      {notifications.length > 0 ? notifications.map(n => (
+                        <div key={n._id} className={`p-4 border-b border-gray-700 hover:bg-gray-700/30 transition flex justify-between items-start ${!n.isRead ? 'bg-emerald-500/5' : ''}`}>
+                          <div className="flex-grow">
+                            <p className={`text-sm leading-relaxed ${!n.isRead ? 'text-white font-medium' : 'text-gray-400'}`}>{n.message}</p>
+                            <span className="text-[10px] text-gray-500 mt-2 block">{new Date(n.createdAt).toLocaleString()}</span>
+                          </div>
+                          {!n.isRead && (
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleMarkAsRead(n._id); 
+                              }}
+                              className="ml-2 text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-tighter bg-emerald-400/10 px-2 py-1 rounded border border-emerald-400/20 transition-all"
+                            >
+                              Read
+                            </button>
+                          )}
+                        </div>
+                      )) : (
+                        <div className="p-8 text-center text-gray-500 text-sm italic">No notifications yet</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700 shadow-lg flex items-center gap-4">
                 <div className="text-center">
                   <p className="text-gray-400 text-xs uppercase tracking-wider">Trips Rated</p>

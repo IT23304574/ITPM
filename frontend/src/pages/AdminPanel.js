@@ -246,6 +246,7 @@ import autoTable from 'jspdf-autotable';
     .ap-btn-cancel:hover   { background:#1e2d3d !important; color:#dce9f5 !important; }
     .ap-btn-delete:hover   { background:linear-gradient(135deg,#ff4d6d,#c9184a) !important; box-shadow:0 4px 22px rgba(255,77,109,0.38) !important; }
     .ap-btn-pass:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; }
+    .ap-btn-msg:hover      { background:linear-gradient(135deg,#a855f7,#9333ea) !important; }
     .ap-btn-primary:active, .ap-btn-blue:active, .ap-btn-save:active, .ap-btn-pass:active { transform:scale(0.97) !important; }
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-track { background:#080b10; }
@@ -260,6 +261,8 @@ const AdminPanel = () => {
   const [message, setMessage]       = useState('');
   const [students, setStudents]     = useState([]);
   const [editingId, setEditingId]   = useState(null);
+  const [messagingId, setMessagingId] = useState(null);
+  const [adminMsg, setAdminMsg]     = useState('');
   const [newPass, setNewPass]       = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -310,6 +313,22 @@ const AdminPanel = () => {
       setContactMessages(data);
     } catch (err) {
       console.error('Error fetching messages:', err);
+    }
+  };
+
+  const handleSendMessage = async (studentId) => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const token = storedUser?.token;
+      await axios.post('http://localhost:5000/api/notifications', 
+        { studentId, message: adminMsg },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      setMessage(`✅ Message sent to ${studentId}`);
+      setMessagingId(null);
+      setAdminMsg('');
+    } catch (err) {
+      setMessage('❌ Error sending message');
     }
   };
 
@@ -990,7 +1009,20 @@ const AdminPanel = () => {
                       borderBottom: `1px solid ${theme.border}`,
                       verticalAlign: 'middle',
                     }}>
-                      {editingId === student.studentId ? (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {messagingId === student.studentId ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <input
+                              className="ap-inline-input"
+                              placeholder="Type message..."
+                              value={adminMsg}
+                              onChange={(e) => setAdminMsg(e.target.value)}
+                              style={{ padding: '0.38rem 0.65rem', background: theme.inputBg, border: `1px solid ${theme.border}`, borderRadius: '5px', color: theme.text, fontSize: '0.75rem', width: '150px' }}
+                            />
+                            <button onClick={() => handleSendMessage(student.studentId)} className="ap-btn-save" style={{ padding: '0.38rem 0.8rem', background: '#9333ea', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '0.73rem' }}>Send</button>
+                            <button onClick={() => setMessagingId(null)} className="ap-btn-cancel" style={{ padding: '0.38rem 0.8rem', background: 'transparent', color: theme.muted, border: `1px solid ${theme.border}`, borderRadius: '5px', cursor: 'pointer', fontSize: '0.73rem' }}>X</button>
+                          </div>
+                        ) : editingId === student.studentId ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                           <input
                             className="ap-inline-input"
@@ -1045,23 +1077,40 @@ const AdminPanel = () => {
                           >Cancel</button>
                         </div>
                       ) : (
-                        <button
-                          className="ap-btn-pass"
-                          onClick={() => setEditingId(student.studentId)}
-                          style={{
-                            padding: '0.38rem 0.85rem',
-                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '5px',
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: '0.73rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'background 0.15s, box-shadow 0.15s',
-                          }}
-                        >Change Password</button>
-                      )}
+                        <>
+                          <button
+                            className="ap-btn-pass"
+                            onClick={() => setEditingId(student.studentId)}
+                            style={{
+                              padding: '0.38rem 0.85rem',
+                              background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '5px',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '0.73rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >Password</button>
+                          <button
+                            className="ap-btn-msg"
+                            onClick={() => setMessagingId(student.studentId)}
+                            style={{
+                              padding: '0.38rem 0.85rem',
+                              background: 'linear-gradient(135deg, #a855f7, #7c3aed)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '5px',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '0.73rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >Message</button>
+                        </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
