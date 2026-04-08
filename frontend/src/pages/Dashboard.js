@@ -213,9 +213,27 @@ const Dashboard = ({ user }) => {
                   type="text"
                   placeholder="Search pickup location..."
                   value={pickupSearch}
-                  onChange={(e) => setPickupSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                  onChange={(e) => {
+                    if (e.target.value.length <= 15) {
+                      setPickupSearch(e.target.value);
+                    }
+                  }}
+                  maxLength={15}
+                  className={`w-full pl-10 pr-4 py-3 bg-gray-700/50 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 ${
+                    searchErrors.pickup ? 'border-red-500' : 'border-gray-600'
+                  }`}
                 />
+              </div>
+              {/* Validation message below pickup search */}
+              <div className="flex justify-between items-center mt-1">
+                {searchErrors.pickup && (
+                  <p className="text-red-400 text-xs flex items-center gap-1">
+                    <span>⚠️</span> {searchErrors.pickup}
+                  </p>
+                )}
+                <p className={`text-xs ml-auto ${pickupSearch.length > 0 ? 'text-gray-500' : 'text-gray-600'}`}>
+                  {pickupSearch.length}/15 characters
+                </p>
               </div>
             </div>
 
@@ -232,9 +250,27 @@ const Dashboard = ({ user }) => {
                   type="text"
                   placeholder="Search drop location..."
                   value={dropSearch}
-                  onChange={(e) => setDropSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300"
+                  onChange={(e) => {
+                    if (e.target.value.length <= 15) {
+                      setDropSearch(e.target.value);
+                    }
+                  }}
+                  maxLength={15}
+                  className={`w-full pl-10 pr-4 py-3 bg-gray-700/50 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-300 ${
+                    searchErrors.drop ? 'border-red-500' : 'border-gray-600'
+                  }`}
                 />
+              </div>
+              {/* Validation message below drop search */}
+              <div className="flex justify-between items-center mt-1">
+                {searchErrors.drop && (
+                  <p className="text-red-400 text-xs flex items-center gap-1">
+                    <span>⚠️</span> {searchErrors.drop}
+                  </p>
+                )}
+                <p className={`text-xs ml-auto ${dropSearch.length > 0 ? 'text-gray-500' : 'text-gray-600'}`}>
+                  {dropSearch.length}/15 characters
+                </p>
               </div>
             </div>
 
@@ -267,7 +303,7 @@ const Dashboard = ({ user }) => {
             </div>
           </div>
 
-          {/* Available Rides Filter */}
+          {/* Available Rides Filter with Message */}
           <div className="mt-4">
             <label htmlFor="show-available" className="flex items-center cursor-pointer">
               <input
@@ -279,6 +315,16 @@ const Dashboard = ({ user }) => {
               />
               <span className="ml-3 text-sm font-medium text-gray-300">Show only rides with available seats</span>
             </label>
+            
+            {/* Message near the checkbox - shows when filter is active but no trips available */}
+            {showAvailableOnly && (
+              <div className="mt-2 flex items-center gap-2 text-yellow-400 text-sm bg-yellow-400/10 p-3 rounded-lg border border-yellow-400/30">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>⚠️ No trips with available seats found. Try disabling this filter to see all available trips.</span>
+              </div>
+            )}
           </div>
 
           {/* Active Filters Display */}
@@ -363,6 +409,7 @@ const Dashboard = ({ user }) => {
               showAvailableOnly={showAvailableOnly}
               user={user}
               onDataChange={fetchRatingStats}
+              searchErrors={searchErrors}
             />
           </div>
         </div>

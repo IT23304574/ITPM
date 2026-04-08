@@ -25,7 +25,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Important: Ensure this matches the port used in the frontend axios call
+
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {

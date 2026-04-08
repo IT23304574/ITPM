@@ -1,4 +1,5 @@
 const Trip = require('../models/Trip');
+
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
@@ -113,6 +114,7 @@ exports.getAllTrips = async (req, res) => {
   }
 };
 
+
 // POST /trips/:id/chat (protected)
 exports.addChatMessage = async (req, res) => {
   try {
@@ -164,6 +166,7 @@ exports.getTripChat = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
 
 // PUT /trips/join/:id or POST /trips/join { tripId } (protected)
 exports.joinTrip = async (req, res) => {
@@ -354,3 +357,4 @@ exports.getGlobalStats = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
