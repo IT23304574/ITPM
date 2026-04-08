@@ -34,6 +34,8 @@ const ChangePassword = ({ user, setUser }) => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
+      // The API call now correctly uses the interceptor to attach the token.
+      // The backend gets the user ID from the token, not the request body.
       await changePassword({ newPassword });
       const updatedUser = { ...user, isFirstLogin: false };
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -247,7 +249,6 @@ const ChangePassword = ({ user, setUser }) => {
         >
           ← go back
         </button>
-
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ const Dashboard = ({ user }) => {
   const [ratingStats, setRatingStats] = useState({ averageRating: 0, ratingCount: 0 });
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [searchErrors, setSearchErrors] = useState({ pickup: '', drop: '' });
 
   const fetchNotifications = async () => {
     if (!user || !user.studentId) return;
@@ -65,7 +66,7 @@ const Dashboard = ({ user }) => {
     fetchNotifications();
   }, [user]);
 
-  if (!user || !user.userId) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -108,7 +109,7 @@ const Dashboard = ({ user }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
-                <span className="text-gray-300 text-sm">Welcome back, <span className="text-emerald-400 font-semibold">{user.userId}</span></span>
+                <span className="text-gray-300 text-sm">Welcome back, <span className="text-emerald-400 font-semibold">{user.userId || user.studentId}</span></span>
               </div>
             </div>
             
@@ -402,7 +403,7 @@ const Dashboard = ({ user }) => {
           <div className="p-6">
             <TripList 
               key={refreshKey} 
-              userId={user.userId} 
+              userId={user.userId || user._id || user.id} 
               pickupSearch={pickupSearch} 
               dropSearch={dropSearch} 
               vehicleFilter={vehicleFilter}
