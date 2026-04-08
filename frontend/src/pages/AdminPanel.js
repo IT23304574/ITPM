@@ -247,6 +247,7 @@ import autoTable from 'jspdf-autotable';
     .ap-btn-delete:hover   { background:linear-gradient(135deg,#ff4d6d,#c9184a) !important; box-shadow:0 4px 22px rgba(255,77,109,0.38) !important; }
     .ap-btn-pass:hover     { background:linear-gradient(135deg,#60a5fa,#3b82f6) !important; }
     .ap-btn-msg:hover      { background:linear-gradient(135deg,#a855f7,#9333ea) !important; }
+    .ap-btn-block:hover    { background:linear-gradient(135deg,#f59e0b,#d97706) !important; box-shadow:0 4px 22px rgba(245,158,11,0.38) !important; }
     .ap-btn-primary:active, .ap-btn-blue:active, .ap-btn-save:active, .ap-btn-pass:active { transform:scale(0.97) !important; }
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-track { background:#080b10; }
@@ -313,6 +314,21 @@ const AdminPanel = () => {
       setContactMessages(data);
     } catch (err) {
       console.error('Error fetching messages:', err);
+    }
+  };
+
+  const handleToggleBlock = async (studentId) => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      const token = storedUser?.token;
+      const { data } = await axios.put('http://localhost:5000/api/auth/admin/toggle-block', 
+        { studentId },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      setMessage(`✅ Student ${data.isBlocked ? 'blocked' : 'unblocked'} successfully`);
+      fetchStudents();
+    } catch (err) {
+      setMessage(err.response?.data?.msg || '❌ Error toggling block status');
     }
   };
 
@@ -991,6 +1007,9 @@ const AdminPanel = () => {
                       color: '#00ffa3',
                     }}>
                       {student.studentId}
+                      {student.isBlocked && (
+                        <span style={{ marginLeft: '0.5rem', fontSize: '0.6rem', background: '#ff4d6d', color: '#fff', padding: '0.1rem 0.3rem', borderRadius: '3px', textTransform: 'uppercase' }}>Blocked</span>
+                      )}
                     </td>
 
                     <td style={{
@@ -1108,6 +1127,21 @@ const AdminPanel = () => {
                               cursor: 'pointer',
                             }}
                           >Message</button>
+                          <button
+                            className="ap-btn-block"
+                            onClick={() => handleToggleBlock(student.studentId)}
+                            style={{
+                              padding: '0.38rem 0.85rem',
+                              background: student.isBlocked ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '5px',
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '0.73rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >{student.isBlocked ? 'Unblock' : 'Block'}</button>
                         </>
                         )}
                       </div>
