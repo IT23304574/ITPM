@@ -1,43 +1,56 @@
-const Recharge = require("../models/Recharge");
+const Recharge = require('../models/Recharge');
+const User = require('../models/User');
 
-exports.createRecharge = async (req, res) => {
+exports.submitRecharge = async (req, res) => {
   try {
     const { name, studentId, amount } = req.body;
-
-    // Validate required fields
-    if (!name || !studentId || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, Student ID, and Amount are required",
-      });
-    }
-
-    let proof = null;
-    if (req.file) {
-      // Convert buffer to base64 string
-      proof = req.file.buffer.toString('base64');
-    }
+    
+    // If using multer and sending file, it would be in req.file
+    // For now, we assume the proof is sent either as a file or base64
+    const proof = req.file ? req.file.buffer.toString('base64') : req.body.proof;
 
     const newRecharge = new Recharge({
       name,
-      studentId,
-      amount: Number(amount),
-      proof,
+      studentId: studentId?.trim(),
+      amount,
+      proof: proof || 'No proof provided'
     });
 
     await newRecharge.save();
+    res.status(201).json({ msg: 'Recharge request submitted successfully' });
+  } catch (err) {
+    res.status(500).json({ msg: 'Server Error' });
+  }
+};
 
-    res.status(201).json({
-      success: true,
-      message: "Recharge request submitted successfully. Payment verification is pending.",
-      data: newRecharge,
-    });
-  } catch (error) {
-    console.error('Error creating recharge:', error);
-    res.status(500).json({
-      success: false,
-      message: "Error creating recharge",
-      error: error.message,
-    });
+exports.getPendingRecharges = async (req, res) => {
+  try {
+    const recharges = await Recharge.find({ status: 'pending' }).sort({ createdAt: -1 });
+    res.json(recharges);
+  } catch (err) {
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.updateRechargeStatus = async (req, res) => {
+  const { status } = req.body; // 'approved' or 'rejected'
+  try {
+    const recharge = await Recharge.findById(req.params.id);
+    if (!recharge) return res.status(404).json({ msg: 'Recharge request not found' });
+    if (recharge.status !== 'pending') return res.status(400).json({ msg: 'Request already processed' });
+
+    if (status === 'approved') {
+      const user = await User.findOne({ studentId: recharge.studentId.trim() });
+      if (!user) return res.status(404).json({ msg: 'Student not found' });
+      
+      user.balance = (user.balance || 0) + recharge.amount;
+      await user.save();
+    }
+
+    recharge.status = status;
+    await recharge.save();
+    res.json({ msg: `Recharge ${status} successfully` });
+  } catch (err) {
+    res.status(500).send('Server Error');
   }
 };

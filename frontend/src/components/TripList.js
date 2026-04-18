@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { getTrips, joinTrip, deleteTrip, startTrip } from '../api';
+import API from '../utils/api';
+import { getTrips, deleteTrip } from '../api';
 import JoinTripModal from './JoinTripModal';
 import ChatModal from './ChatModal';
 import RateTripModal from './RateTripModal';
@@ -94,10 +94,16 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
     fetchTrips();
   }, []);
 
-  const handleDelete = async (tripId) => {
-    if (window.confirm('Are you sure you want to cancel this trip?')) {
+  const handleDelete = async (trip) => {
+    const hasJoinedStudents = trip.joinedStudents && trip.joinedStudents.length > 0;
+    const confirmMessage = hasJoinedStudents 
+      ? "⚠️ Warning: At least one student has already joined this trip. If you cancel now, LKR 500 will be deducted from your balance. Do you still want to proceed?"
+      : "Are you sure you want to cancel this trip?";
+
+    if (window.confirm(confirmMessage)) {
       try {
-        await deleteTrip(tripId);
+        const res = await deleteTrip(trip._id);
+        if (res.data && res.data.msg) alert(res.data.msg);
         fetchTrips();
       } catch (err) {
         alert(err.response?.data?.msg || 'Failed to cancel trip');
@@ -112,24 +118,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
 
   const handleRateSubmit = async (rating) => {
     try {
-      let token = localStorage.getItem('token') ||
-                  localStorage.getItem('authToken') ||
-                  sessionStorage.getItem('token');
-
-      if (token === 'undefined' || token === 'null') token = null;
-
-      if (!token) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            if (parsedUser.token) token = parsedUser.token;
-          } catch (e) {}
-        }
-      }
-      await axios.put(`http://localhost:5000/api/trips/${tripToStart}/start`, { rating }, {
-          headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
-      });
+      await API.put(`/trips/${tripToStart}/start`, { rating });
       fetchTrips();
       if (onDataChange) onDataChange();
     } catch (err) {
@@ -149,37 +138,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
         setProfileImage(base64Image);
         localStorage.setItem(`profileImage_${userId}`, base64Image);
 
-        let token = localStorage.getItem('token') || 
-                      localStorage.getItem('authToken') || 
-                      sessionStorage.getItem('token');
-        
-        if (token === 'undefined' || token === 'null') token = null;
-
-        if (!token) {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const parsedUser = JSON.parse(storedUser);
-              if (parsedUser.token) token = parsedUser.token;
-            } catch (e) {
-              console.error("Failed to parse user object for token");
-            }
-          }
-        }
-
-        if (!token) {
-          console.error("Debug: Token still not found. LocalStorage keys:", Object.keys(localStorage));
-          alert("Authentication error: You are not logged in. Please log out and log in again.");
-          navigate('/login');
-          return;
-        }
-
-        await axios.put('http://localhost:5000/api/auth/profile', { profileImage: base64Image }, {
-          headers: { 
-            'x-auth-token': token,
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        await API.put('/auth/profile', { profileImage: base64Image });
         alert('Profile image updated successfully!');
       } catch (err) {
         console.error('Failed to upload profile image:', err);
@@ -197,26 +156,8 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
 
   const handleSaveProfile = async () => {
     try {
-      let token = localStorage.getItem('token') || 
-                  localStorage.getItem('authToken') || 
-                  sessionStorage.getItem('token');
-      
-      if (token === 'undefined' || token === 'null') token = null;
-
-      if (!token) {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            if (parsedUser.token) token = parsedUser.token;
-          } catch (e) {}
-        }
-      }
-
-      await axios.put('http://localhost:5000/api/auth/profile', { 
+      await API.put('/auth/profile', { 
         gender, age, year, semester 
-      }, {
-        headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
       });
       alert('Profile details saved successfully!');
       fetchTrips();
@@ -411,7 +352,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDat
                     )}
 
                     <button 
-                      onClick={() => handleDelete(trip._id)}
+                      onClick={() => handleDelete(trip)}
                       className="w-full md:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition text-sm"
                     >
                       Cancel Trip

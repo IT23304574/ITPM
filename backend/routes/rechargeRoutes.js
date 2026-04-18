@@ -1,31 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
-
-const { createRecharge } = require('../controllers/rechargeController');
+const rechargeController = require('../controllers/rechargeController');
 const auth = require('../middleware/auth');
+const admin = require('../middleware/admin');
 
-// Configure multer for file uploads
-const storage = multer.memoryStorage(); // Store files in memory instead of disk
+// Basic configuration for multer to handle memory storage for this example
+// or you can configure diskStorage
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } 
+}); // 5MB limit
 
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
+// @route   POST /api/recharge
+router.post('/', upload.single('proof'), rechargeController.submitRecharge);
 
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'));
-    }
-  }
-});
+// @route   GET /api/recharge
+router.get('/', auth, admin, rechargeController.getPendingRecharges);
 
-// Route to create a recharge request
-router.post('/', auth, upload.single('proof'), createRecharge);
+// @route   PUT /api/recharge/:id
+router.put('/:id', auth, admin, rechargeController.updateRechargeStatus);
 
 module.exports = router;

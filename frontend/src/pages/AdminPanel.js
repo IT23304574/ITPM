@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerStudent, getAllStudents, adminUpdateStudentPassword } from '../api';
-import axios from 'axios';
 import API from '../utils/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -52,6 +51,8 @@ const AdminPanel = () => {
   const [darkMode, setDarkMode] = useState(true);
   const [stats, setStats] = useState({ totalUsers: 0, totalTrips: 0, averageRating: 0, vehicleStats: [], topDestinations: [] });
   const [contactMessages, setContactMessages] = useState([]);
+  const [recharges, setRecharges] = useState([]);
+  const [viewingProof, setViewingProof] = useState(null);
 
   const theme = {
     bg: darkMode ? '#080b10' : '#f8fafc',
@@ -88,11 +89,7 @@ const AdminPanel = () => {
 
   const fetchContactMessages = async () => {
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = storedUser?.token;
-      const { data } = await axios.get('http://localhost:5000/api/contact', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const { data } = await API.get('/contact');
       setContactMessages(data);
     } catch (err) {
       console.error('Error fetching messages:', err);
@@ -101,12 +98,7 @@ const AdminPanel = () => {
 
   const handleToggleBlock = async (studentId) => {
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = storedUser?.token;
-      const { data } = await axios.put('http://localhost:5000/api/auth/admin/toggle-block', 
-        { studentId },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+      const { data } = await API.put('/auth/admin/toggle-block', { studentId });
       setMessage(`✅ Student ${data.isBlocked ? 'blocked' : 'unblocked'} successfully`);
       fetchStudents();
     } catch (err) {
@@ -116,21 +108,34 @@ const AdminPanel = () => {
 
   const handleSendMessage = async (studentId) => {
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = storedUser?.token;
-      await axios.post('http://localhost:5000/api/notifications', 
-        { studentId, message: adminMsg },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      setMessage(`✅ Message sent to ${studentId}`);
+      const { data } = await API.post('/notifications', { studentId, message: adminMsg });
+      setMessage(`✅ ${data.msg || 'Message sent'}`);
       setMessagingId(null);
       setAdminMsg('');
     } catch (err) {
-      setMessage('❌ Error sending message');
+      setMessage(err.response?.data?.msg || '❌ Error sending message');
     }
   };
 
-  useEffect(() => { fetchStudents(); fetchStats(); fetchContactMessages(); }, []);
+  const fetchRecharges = async () => {
+    try {
+      const { data } = await API.get('/recharge');
+      setRecharges(data);
+    } catch (err) { console.error('Error fetching recharges:', err); }
+  };
+
+  const handleRechargeAction = async (id, status) => {
+    try {
+      const { data } = await API.put(`/recharge/${id}`, { status });
+      setMessage(`✅ ${data.msg}`);
+      fetchRecharges();
+      fetchStats();
+    } catch (err) {
+      setMessage(err.response?.data?.msg || '❌ Error processing recharge');
+    }
+  };
+
+  useEffect(() => { fetchStudents(); fetchStats(); fetchContactMessages(); fetchRecharges(); }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -160,11 +165,7 @@ const AdminPanel = () => {
   const handleDeleteMessage = async (id) => {
     if (!window.confirm('Delete this message?')) return;
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = storedUser?.token;
-      await axios.delete(`http://localhost:5000/api/contact/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await API.delete(`/contact/${id}`);
       setContactMessages(prev => prev.filter(m => m._id !== id));
       setMessage('✅ Message deleted');
     } catch (err) {
@@ -189,15 +190,7 @@ const AdminPanel = () => {
   const handleDeleteSelected = async () => {
     if (!window.confirm(`⚠️ Are you sure you want to delete ${selectedIds.length} students? This action cannot be undone.`)) return;
     try {
-      // Use absolute path and manual token retrieval for reliability
-      const storedUser = JSON.parse(localStorage.getItem('user'));
-      const token = storedUser?.token;
-
-      await axios.delete('http://localhost:5000/api/auth/students', { 
-        headers: { 'Authorization': `Bearer ${token}` },
-        data: { ids: selectedIds } 
-      });
-
+      await API.delete('/auth/students', { data: { ids: selectedIds } });
       setMessage(`✅ ${selectedIds.length} students deleted successfully!`);
       setSelectedIds([]);
       fetchStudents();
@@ -948,6 +941,69 @@ const AdminPanel = () => {
             </table>
           </div>
         </div>
+
+        {/* ── Section: Recharge Requests ── */}
+        <div style={{
+          marginTop: '2rem',
+          background: theme.cardBg,
+          border: `1px solid ${theme.border}`,
+          borderRadius: '14px',
+          padding: '1.75rem',
+        }}>
+          <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', marginBottom: '1.5rem' }}>
+            Pending Recharge Requests
+          </h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${theme.border}`, color: theme.muted, fontSize: '0.65rem', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Student</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Amount</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Proof</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recharges.map((r) => (
+                  <tr key={r._id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                    <td style={{ padding: '1rem' }}>{r.studentId}<br/><span style={{ fontSize: '0.7rem', color: theme.muted }}>{r.name}</span></td>
+                    <td style={{ padding: '1rem', fontWeight: 700, color: '#00ffa3' }}>LKR {r.amount}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <button 
+                        onClick={() => setViewingProof(r.proof)}
+                        style={{ background: '#1e2d3d', color: '#3b82f6', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem' }}
+                      >View Slip</button>
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => handleRechargeAction(r._id, 'approved')} style={{ background: '#15803d', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Approve</button>
+                        <button onClick={() => handleRechargeAction(r._id, 'rejected')} style={{ background: '#b91c1c', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>Reject</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {recharges.length === 0 && <p style={{ textAlign: 'center', padding: '2rem', color: theme.muted, fontSize: '0.75rem' }}>// No pending recharge requests</p>}
+          </div>
+        </div>
+
+        {/* Proof Viewer Modal */}
+        {viewingProof && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => setViewingProof(null)}>
+            <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }} onClick={e => e.stopPropagation()}>
+              <img 
+                src={viewingProof.startsWith('data:') ? viewingProof : `data:image/jpeg;base64,${viewingProof}`} 
+                alt="Payment Slip" 
+                style={{ width: '100%', height: 'auto', borderRadius: '8px' }} 
+              />
+              <button 
+                onClick={() => setViewingProof(null)}
+                style={{ position: 'absolute', top: '-40px', right: 0, background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer' }}
+              >&times;</button>
+            </div>
+          </div>
+        )}
 
         {/* ── Section: Support Messages ── */}
         <div style={{

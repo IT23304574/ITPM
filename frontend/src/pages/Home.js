@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import API from '../utils/api';
 
 const Home = () => {
   const [scrollY, setScrollY] = useState(0);
@@ -16,7 +16,7 @@ const Home = () => {
 
     const fetchGlobalStats = async () => {
       try {
-        const { data } = await axios.get('http://localhost:5000/api/trips/stats/global');
+        const { data } = await API.get('/trips/stats/global');
         setStats(data);
       } catch (err) {
         console.error("Error fetching stats:", err);

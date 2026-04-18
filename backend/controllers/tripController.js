@@ -266,9 +266,24 @@ exports.deleteTrip = async (req, res) => {
       return res.status(401).json({ msg: 'User not authorized' });
     }
 
+    let penaltyApplied = false;
+    // Deduct 500 if at least one student has joined
+    if (trip.joinedStudents && trip.joinedStudents.length > 0) {
+      const organizer = await User.findById(req.user.id);
+      if (organizer) {
+        organizer.balance = (organizer.balance || 0) - 500;
+        await organizer.save();
+        penaltyApplied = true;
+      }
+    }
+
     await trip.deleteOne();
 
-    res.json({ msg: 'Trip removed' });
+    res.json({ 
+      msg: penaltyApplied 
+        ? 'Trip cancelled. LKR 500 has been deducted from your balance because students had already joined your trip.' 
+        : 'Trip cancelled successfully.' 
+    });
   } catch (err) {
     console.error('❌ Delete trip error:', err.message);
     res.status(500).send('Server Error');
@@ -357,4 +372,3 @@ exports.getGlobalStats = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
-

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import API from "../utils/api";
 
 const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -88,19 +88,16 @@ const RechargeModal = ({ isOpen, onClose, onSubmit }) => {
         formDataToSend.append('proof', formData.proof);
       }
 
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const token = user.token;
-
-      await axios.post('http://localhost:5001/api/recharge', formDataToSend, {
+      await API.post('/recharge', formDataToSend, {
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
 
+      if (onSubmit) onSubmit(formData);
       setSubmitted(true);
     } catch (error) {
-      alert(error.response?.data?.message || "An error occurred. Please try again.");
+      alert(error.response?.data?.msg || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }

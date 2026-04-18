@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
+import API from '../utils/api';
 
 const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   const [messages, setMessages] = useState([]);
@@ -16,23 +16,6 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  const getToken = useCallback(() => {
-    let token =
-      localStorage.getItem('token') ||
-      localStorage.getItem('authToken') ||
-      sessionStorage.getItem('token');
-
-    if (!token || token === 'undefined') {
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        token = user?.token || null;
-      } catch {
-        token = null;
-      }
-    }
-    return token;
   }, []);
 
   // Validation: Check for special characters
@@ -94,19 +77,9 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
   // Fetch messages
   const fetchMessages = useCallback(async () => {
     try {
-      const token = getToken();
-      if (!token) return;
-
-      const res = await axios.get(
-        `http://localhost:5000/api/trips/${tripId}/chat`,
-        {
-          headers: {
-            'x-auth-token': token,
-            Authorization: `Bearer ${token}`
-          },
-          timeout: 10000
-        }
-      );
+      const res = await API.get(`/trips/${tripId}/chat`, {
+        timeout: 10000
+      });
 
       if (res.data && Array.isArray(res.data)) {
         setMessages(res.data);
@@ -116,7 +89,7 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
       console.error("Fetch error:", err);
       setError('Failed to load messages');
     }
-  }, [tripId, getToken]);
+  }, [tripId]);
 
   // Send message
   const handleSend = async (e) => {
@@ -155,25 +128,12 @@ const ChatModal = ({ tripId, isOpen, onClose, currentUserId }) => {
     try {
       setSending(true);
       
-      const token = getToken();
-      if (!token) {
-        setError("Unauthorized");
-        setSending(false);
-        return;
-      }
-      
       // Send cleaned message
       const messageToSend = contentValidation.cleanedMessage || trimmed;
       
-      await axios.post(
-        `http://localhost:5000/api/trips/${tripId}/chat`,
+      await API.post(`/trips/${tripId}/chat`,
         { message: messageToSend },
         {
-          headers: {
-            'x-auth-token': token,
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
           timeout: 10000
         }
       );

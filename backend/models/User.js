@@ -38,6 +38,10 @@ const userSchema = new mongoose.Schema(
     semester: {
       type: String
     },
+    balance: {
+      type: Number,
+      default: 0
+    },
     isBlocked: {
       type: Boolean,
       default: false

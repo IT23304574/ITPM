@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import API from '../utils/api';
 
 const Contact = () => {
   const user = JSON.parse(localStorage.getItem('user'));
@@ -25,7 +25,7 @@ const Contact = () => {
     setIsSubmitting(true);
     
     try {
-      await axios.post('http://localhost:5000/api/contact', formData);
+      await API.post('/contact', formData);
       alert('Thank you for contacting us! We will get back to you soon.');
       setFormData({ name: '', email: '', subject: '', message: '', studentId: user?.studentId || '' });
     } catch (err) {
