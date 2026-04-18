@@ -1,5 +1,8 @@
 const Trip = require('../models/Trip');
 
+const User = require('../models/User');
+const mongoose = require('mongoose');
+
 const SEATS_BY_VEHICLE = {
   TukTuk: 2,       // Treewheeler
   'Small Car': 3,
@@ -40,6 +43,46 @@ exports.createTrip = async (req, res) => {
   }
 };
 
+// GET /trips/organizer/:userId/stats (protected)
+exports.getOrganizerStats = async (req, res) => {
+  try {
+    const organizerId = req.params.userId;
+
+    // Validate organizerId
+    if (!mongoose.Types.ObjectId.isValid(organizerId)) {
+      return res.status(400).json({ msg: 'Invalid user ID' });
+    }
+
+    const stats = await Trip.aggregate([
+      {
+        $match: {
+          organizer: new mongoose.Types.ObjectId(organizerId),
+          rating: { $exists: true, $ne: null, $gt: 0 },
+        },
+      },
+      {
+        $group: {
+          _id: '$organizer',
+          averageRating: { $avg: '$rating' },
+          ratingCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    if (stats.length > 0) {
+      res.json({
+        averageRating: stats[0].averageRating,
+        ratingCount: stats[0].ratingCount,
+      });
+    } else {
+      res.json({ averageRating: 0, ratingCount: 0 });
+    }
+  } catch (err) {
+    console.error('❌ Get organizer stats error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 // GET /trips  (protected)
 exports.getAllTrips = async (req, res) => {
   try {
@@ -70,6 +113,7 @@ exports.getAllTrips = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
 
 // POST /trips/:id/chat (protected)
 exports.addChatMessage = async (req, res) => {
@@ -123,6 +167,7 @@ exports.getTripChat = async (req, res) => {
   }
 };
 
+
 // PUT /trips/join/:id or POST /trips/join { tripId } (protected)
 exports.joinTrip = async (req, res) => {
   try {
@@ -130,6 +175,44 @@ exports.joinTrip = async (req, res) => {
     const { dropLocation, phoneNumber } = req.body;
     const userId = req.user.id;
 
+    if (!phoneNumber) {
+      return res.status(400).json({ msg: 'Phone number is required to join.' });
+    }
+
+    // The user requested a 5ms delay. While this can sometimes reduce the chance of a race condition,
+    // it is not a reliable solution. A much better approach is to use an atomic database operation
+    // that checks conditions and updates the document in a single step, which we will do below.
+    await new Promise(resolve => setTimeout(resolve, 5));
+
+    // First, try to add the user to the trip only if they are not already in it and there is space.
+    // This is an atomic operation and prevents race conditions.
+    const updatedTrip = await Trip.findOneAndUpdate(
+      {
+        _id: tripId,
+        status: { $ne: 'started' },
+        'joinedStudents.user': { $ne: userId }, // User is not already in the trip
+        $expr: { $lt: [{ $size: '$joinedStudents' }, { $subtract: ['$maxSeats', 1] }] } // Check for available seats
+      },
+      {
+        $push: { joinedStudents: { user: userId, dropLocation, phoneNumber } }
+      },
+      { new: true }
+    );
+
+    if (updatedTrip) {
+      // Successfully joined the trip.
+      await updatedTrip.populate('organizer', 'studentId profileImage');
+      await updatedTrip.populate('joinedStudents.user', 'studentId gender profileImage');
+      return res.json(updatedTrip);
+    }
+
+    // If the above operation failed, it could be for several reasons:
+    // 1. The trip is full.
+    // 2. The user has already joined (and might be trying to update their details).
+    // 3. The trip has started.
+    // 4. The trip doesn't exist.
+
+    // Let's check the trip state to give a more specific error.
     const trip = await Trip.findById(tripId);
     if (!trip) {
       return res.status(404).json({ msg: 'Trip not found' });
@@ -139,34 +222,30 @@ exports.joinTrip = async (req, res) => {
       return res.status(400).json({ msg: 'Trip has already started' });
     }
 
-    if (!phoneNumber) {
-      return res.status(400).json({ msg: 'Phone number is required to join.' });
-    }
+    const isAlreadyJoined = trip.joinedStudents.some(student => (student.user || student).toString() === userId);
 
-    // Remove the user if they already joined (to allow updating details)
-    // We use filter to handle both old schema (IDs) and new schema (Objects)
-    let isUpdate = false;
-    trip.joinedStudents = trip.joinedStudents.filter((student) => {
-      const studentId = (student.user || student).toString();
-      if (studentId === userId) {
-        isUpdate = true;
-        return false; // Remove existing entry
+    if (isAlreadyJoined) {
+      // The user is already in the trip, so let's update their details. This is also an atomic operation.
+      const tripAfterUpdate = await Trip.findOneAndUpdate(
+        { _id: tripId, 'joinedStudents.user': userId },
+        {
+          $set: {
+            'joinedStudents.$.dropLocation': dropLocation,
+            'joinedStudents.$.phoneNumber': phoneNumber
+          }
+        },
+        { new: true }
+      )
+      .populate('organizer', 'studentId profileImage')
+      .populate('joinedStudents.user', 'studentId gender profileImage');
+
+      return res.json(tripAfterUpdate);
       }
-      return true; // Keep others
-    });
 
-    // If it's a new join (not an update), check capacity
-    if (!isUpdate && trip.joinedStudents.length >= trip.maxSeats - 1) {
-      return res.status(400).json({ msg: 'Vehicle is full' });
-    }
+    // If we reach here, the user was not already joined, and the initial atomic update failed.
+    // The most likely remaining reason is that the vehicle is full.
+    return res.status(400).json({ msg: 'Vehicle is full.' });
 
-    trip.joinedStudents.push({ user: userId, dropLocation, phoneNumber });
-    trip.markModified('joinedStudents');
-    await trip.save();
-
-    await trip.populate('organizer', 'studentId profileImage');
-    await trip.populate('joinedStudents.user', 'studentId gender profileImage');
-    res.json(trip);
   } catch (err) {
     console.error('❌ Join trip error:', err.message);
     res.status(500).send('Server Error');
@@ -210,6 +289,15 @@ exports.startTrip = async (req, res) => {
     }
 
     trip.status = 'started';
+    if (req.body.rating) {
+      const receivedRating = Number(req.body.rating);
+      if (!isNaN(receivedRating) && receivedRating > 0) {
+        trip.rating = receivedRating;
+        console.log(`[DEBUG] Trip ID ${trip._id} is being updated with rating: ${trip.rating}`);
+      } else {
+        console.log(`[DEBUG] Received invalid rating value: ${req.body.rating}`);
+      }
+    }
     await trip.save();
 
     // // Automatically delete the trip after 15 seconds
@@ -228,3 +316,45 @@ exports.startTrip = async (req, res) => {
     res.status(500).send('Server Error');
   }
 };
+
+// GET /trips/stats/global
+exports.getGlobalStats = async (req, res) => {
+  try {
+    const ratingStats = await Trip.aggregate([
+      { $match: { rating: { $exists: true, $gt: 0 } } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+        },
+      },
+    ]);
+
+    // Get trip counts by vehicle type
+    const vehicleStats = await Trip.aggregate([
+      { $group: { _id: '$vehicleType', count: { $sum: 1 } } }
+    ]);
+
+    // Get top 3 destinations
+    const topDestinations = await Trip.aggregate([
+      { $group: { _id: '$destination', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 3 }
+    ]);
+
+    const totalUsers = await User.countDocuments({ role: 'student' });
+    const totalTrips = await Trip.countDocuments();
+
+    res.json({
+      averageRating: ratingStats.length > 0 ? ratingStats[0].averageRating : 0,
+      totalUsers,
+      totalTrips,
+      vehicleStats,
+      topDestinations
+    });
+  } catch (err) {
+    console.error('❌ Get global stats error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+

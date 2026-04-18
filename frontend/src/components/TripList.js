@@ -1,172 +1,10 @@
-/*import React, { useEffect, useState } from 'react';
-import { getTrips, joinTrip, deleteTrip, startTrip } from '../api';
-
-const TripList = ({ userId, searchTerm, vehicleFilter }) => {
-  const [trips, setTrips] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const fetchTrips = async () => {
-    try {
-      const { data } = await getTrips();
-      setTrips(data);
-    } catch (err) {
-      setError('Failed to load trips');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
-  const handleJoin = async (tripId) => {
-    try {
-      await joinTrip({ tripId });
-      fetchTrips(); // Refresh list after joining
-      alert('Successfully joined the trip!');
-    } catch (err) {
-      alert(err.response?.data?.msg || 'Failed to join trip');
-    }
-  };
-
-  const handleDelete = async (tripId) => {
-    if (window.confirm('Are you sure you want to cancel this trip?')) {
-      try {
-        await deleteTrip(tripId);
-        fetchTrips(); // Refresh list after deletion
-      } catch (err) {
-        alert(err.response?.data?.msg || 'Failed to cancel trip');
-      }
-    }
-  };
-
-  const handleStartTrip = async (tripId) => {
-    try {
-      await startTrip(tripId);
-      fetchTrips(); // Refresh to show updated status
-    } catch (err) {
-      alert(err.response?.data?.msg || 'Failed to start trip');
-    }
-  };
-
-  if (loading) return <div className="text-white mt-6 text-center">Loading trips...</div>;
-  if (error) return <div className="text-red-400 mt-6 text-center">{error}</div>;
-
-  if (trips.length === 0) {
-    return (
-      <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-6 text-center">
-        <h3 className="text-xl font-bold text-white mb-2">No Trips Available</h3>
-        <p className="text-gray-400">Be the first to post a trip!</p>
-      </div>
-    );
-  }
-
-  const filteredTrips = trips.filter(trip => {
-    const matchesSearch = (trip.destination?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (trip.startLocation?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesVehicle = vehicleFilter === 'All' || !vehicleFilter || trip.vehicleType === vehicleFilter;
-    
-    return matchesSearch && matchesVehicle;
-  });
-
-  if (filteredTrips.length === 0 && (searchTerm || (vehicleFilter && vehicleFilter !== 'All'))) {
-    return (
-      <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-6 text-center">
-        <h3 className="text-xl font-bold text-white mb-2">No Matching Trips Found</h3>
-        <p className="text-gray-400">Try a different search term.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-6 mt-6">
-      {filteredTrips.map((trip) => {
-        const isOrganizer = trip.organizer._id === userId;
-        const isJoined = trip.joinedStudents.includes(userId);
-        // Organizer takes 1 seat, so subtract 1 from maxSeats
-        const availableSeats = trip.maxSeats - 1 - trip.joinedStudents.length;
-
-        return (
-          <div key={trip._id} className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h3 className="text-xl font-bold text-emerald-400">{trip.destination}</h3>
-              <div className="text-gray-300 mt-2 space-y-1 text-sm">
-                <p>
-                  <span className="font-semibold text-gray-400">Pickup Location:</span> {trip.startLocation || <span className="italic text-gray-500">Not specified</span>}
-                  {trip.startLocation && (
-                    <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trip.startLocation)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-400 hover:underline text-xs"
-                    >
-                      (View Map)
-                    </a>
-                  )}
-                </p>
-                <p><span className="font-semibold text-gray-400">Vehicle:</span> {trip.vehicleType}</p>
-                <p><span className="font-semibold text-gray-400">Organizer:</span> {trip.organizer.studentId}</p>
-                <p><span className="font-semibold text-gray-400">Contact:</span> {trip.phoneNumber || 'Not provided'}</p>
-                <p><span className="font-semibold text-gray-400">Fare:</span> LKR {trip.totalFare}</p>
-                <p><span className="font-semibold text-gray-400">Seats:</span> <span className={availableSeats > 0 ? 'text-green-400' : 'text-red-400'}>{availableSeats} available</span> / {trip.maxSeats}</p>
-              </div>
-            </div>
-            
-            <div className="w-full md:w-auto">
-              {isOrganizer ? (
-                <div className="flex flex-col gap-2">
-                  <span className="block text-center w-full md:w-auto px-4 py-2 bg-gray-600 text-white rounded-lg font-semibold cursor-default text-sm">Your Trip</span>
-                  
-                  {!trip.status || trip.status === 'planned' ? (
-                    <button 
-                      onClick={() => handleStartTrip(trip._id)}
-                      className="w-full md:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition text-sm"
-                    >
-                      Start Trip
-                    </button>
-                  ) : (
-                    <span className="block text-center w-full md:w-auto px-4 py-2 bg-green-800 text-green-200 rounded-lg font-bold text-sm">Trip Started</span>
-                  )}
-
-                  <button 
-                    onClick={() => handleDelete(trip._id)}
-                    className="w-full md:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition text-sm"
-                  >
-                    Cancel Trip
-                  </button>
-                </div>
-              ) : trip.status === 'started' ? (
-                <span className="block text-center w-full md:w-auto px-4 py-2 bg-green-800 text-green-200 rounded-lg font-bold cursor-default">Trip Started</span>
-              ) : isJoined ? (
-                <span className="block text-center w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold cursor-default">Joined</span>
-              ) : availableSeats === 0 ? (
-                <span className="block text-center w-full md:w-auto px-4 py-2 bg-red-600 text-white rounded-lg font-semibold cursor-default">Full</span>
-              ) : (
-                <button 
-                  onClick={() => handleJoin(trip._id)}
-                  className="w-full md:w-auto px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition"
-                >
-                  Join Trip
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-export default TripList;
-*/
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { getTrips, joinTrip, deleteTrip, startTrip } from '../api';
 import JoinTripModal from './JoinTripModal';
 import ChatModal from './ChatModal';
+import RateTripModal from './RateTripModal';
 
 // Helper to resize and compress images before upload
 const resizeImage = (file) => {
@@ -206,7 +44,7 @@ const resizeImage = (file) => {
   });
 };
 
-const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => {
+const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter, onDataChange, showAvailableOnly }) => {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -217,6 +55,8 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
   const [viewingImage, setViewingImage] = useState(null);
   const [isChatOpen, setChatOpen] = useState(false);
   const [chatTripId, setChatTripId] = useState(null);
+  const [isRateModalOpen, setRateModalOpen] = useState(false);
+  const [tripToStart, setTripToStart] = useState(null);
 
   // New Profile State
   const [gender, setGender] = useState(localStorage.getItem(`gender_${userId}`) || '');
@@ -224,7 +64,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
   const [year, setYear] = useState(localStorage.getItem(`year_${userId}`) || '');
   const [semester, setSemester] = useState(localStorage.getItem(`semester_${userId}`) || '');
 
-  // Sync profile details to localStorage (specific key for persistence, generic key for CreateTripModal access)
+  // Sync profile details to localStorage
   useEffect(() => {
     localStorage.setItem(`gender_${userId}`, gender);
     localStorage.setItem('user_profile_gender', gender);
@@ -258,19 +98,45 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
     if (window.confirm('Are you sure you want to cancel this trip?')) {
       try {
         await deleteTrip(tripId);
-        fetchTrips(); // Refresh list after deletion
+        fetchTrips();
       } catch (err) {
         alert(err.response?.data?.msg || 'Failed to cancel trip');
       }
     }
   };
 
-  const handleStartTrip = async (tripId) => {
+  const handleStartTrip = (tripId) => {
+    setTripToStart(tripId);
+    setRateModalOpen(true);
+  };
+
+  const handleRateSubmit = async (rating) => {
     try {
-      await startTrip(tripId);
-      fetchTrips(); // Refresh to show updated status
+      let token = localStorage.getItem('token') ||
+                  localStorage.getItem('authToken') ||
+                  sessionStorage.getItem('token');
+
+      if (token === 'undefined' || token === 'null') token = null;
+
+      if (!token) {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser.token) token = parsedUser.token;
+          } catch (e) {}
+        }
+      }
+      await axios.put(`http://localhost:5000/api/trips/${tripToStart}/start`, { rating }, {
+          headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
+      });
+      fetchTrips();
+      if (onDataChange) onDataChange();
     } catch (err) {
       alert(err.response?.data?.msg || 'Failed to start trip');
+    } finally {
+      setRateModalOpen(false);
+      setTripToStart(null);
     }
   };
 
@@ -283,16 +149,13 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
         setProfileImage(base64Image);
         localStorage.setItem(`profileImage_${userId}`, base64Image);
 
-        // Try to retrieve token from localStorage or sessionStorage
         let token = localStorage.getItem('token') || 
                       localStorage.getItem('authToken') || 
                       sessionStorage.getItem('token');
         
-        // Ensure token is valid and not a string "undefined" or "null"
         if (token === 'undefined' || token === 'null') token = null;
 
         if (!token) {
-          // Fallback: Check if token is inside the 'user' object in localStorage
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
@@ -311,8 +174,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
           return;
         }
 
-        // Assuming the route is /api/auth/profile based on controller structure
-        await axios.put('http://localhost:5001/api/auth/profile', { profileImage: base64Image }, {
+        await axios.put('http://localhost:5000/api/auth/profile', { profileImage: base64Image }, {
           headers: { 
             'x-auth-token': token,
             'Authorization': `Bearer ${token}`
@@ -334,11 +196,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
   };
 
   const handleSaveProfile = async () => {
-    if (!gender || !age || !year || !semester) {
-      alert('Please complete all profile fields before saving.');
-      return;
-    }
-
     try {
       let token = localStorage.getItem('token') || 
                   localStorage.getItem('authToken') || 
@@ -356,13 +213,13 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
         }
       }
 
-      await axios.put('http://localhost:5001/api/auth/profile', { 
+      await axios.put('http://localhost:5000/api/auth/profile', { 
         gender, age, year, semester 
       }, {
         headers: { 'x-auth-token': token, 'Authorization': `Bearer ${token}` }
       });
       alert('Profile details saved successfully!');
-      fetchTrips(); // Refresh the list to show the new details (like Gender) immediately
+      fetchTrips();
     } catch (err) {
       console.error('Failed to save profile:', err);
       alert('Failed to save profile details.');
@@ -370,12 +227,15 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
   };
 
   const filteredTrips = trips.filter(trip => {
-    const matchesPickup = !pickupSearch || (trip.startLocation?.toLowerCase().includes(pickupSearch.toLowerCase()));
-    const matchesDrop = !dropSearch || (trip.destination?.toLowerCase().includes(dropSearch.toLowerCase()));
+    const matchesPickup = !pickupSearch || (trip.startLocation?.toLowerCase().includes(pickupSearch.toLowerCase().trim()));
+    const matchesDrop = !dropSearch || (trip.destination?.toLowerCase().includes(dropSearch.toLowerCase().trim()));
     
     const matchesVehicle = vehicleFilter === 'All' || !vehicleFilter || trip.vehicleType === vehicleFilter;
-    
-    return matchesPickup && matchesDrop && matchesVehicle;
+
+    const availableSeats = trip.maxSeats - 1 - (trip.joinedStudents?.length || 0);
+    const hasAvailableSeats = !showAvailableOnly || availableSeats > 0;
+
+    return matchesPickup && matchesDrop && matchesVehicle && hasAvailableSeats;
   });
 
   const renderContent = () => {
@@ -391,11 +251,23 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
       );
     }
 
-    if (filteredTrips.length === 0 && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All'))) {
+    if (filteredTrips.length === 0 && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All') || showAvailableOnly)) {
+      let noResultsMessage = "No matching trips found.";
+      
+      if (showAvailableOnly && !pickupSearch && !dropSearch && (vehicleFilter === 'All' || !vehicleFilter)) {
+        noResultsMessage = "No trips with available seats at the moment. Try disabling 'Show only rides with available seats' to see all trips.";
+      } else if (showAvailableOnly && (pickupSearch || dropSearch || (vehicleFilter && vehicleFilter !== 'All'))) {
+        noResultsMessage = "No trips match your search criteria with available seats. Try broadening your search or disabling the available seats filter.";
+      } else if (pickupSearch || dropSearch) {
+        noResultsMessage = "No trips match your location search. Try different pickup or drop locations.";
+      } else if (vehicleFilter && vehicleFilter !== 'All') {
+        noResultsMessage = `No trips found for ${vehicleFilter} vehicles. Try selecting a different vehicle type.`;
+      }
+      
       return (
         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 mt-6 text-center">
           <h3 className="text-xl font-bold text-white mb-2">No Matching Trips Found</h3>
-          <p className="text-gray-400">Try a different search term.</p>
+          <p className="text-gray-400">{noResultsMessage}</p>
         </div>
       );
     }
@@ -407,7 +279,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
           const isJoined = trip.joinedStudents?.some(student =>
             ((student?.user?._id || student?.user) || (student?._id || student))?.toString() === userId
           ) || false;
-          // Organizer takes 1 seat, so subtract 1 from maxSeats
           const availableSeats = trip.maxSeats - 1 - (trip.joinedStudents?.length || 0);
 
           return (
@@ -443,7 +314,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
                     </div>
                   </div>
                   
-                  {/* Display Organizer Details */}
                   {(trip.organizerGender || trip.organizerAge || trip.organizerYear) && (
                     <div className="mt-2 mb-2 p-3 bg-gray-700 rounded-lg border border-gray-600 text-sm">
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -480,14 +350,12 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
                   <p><span className="font-semibold text-gray-400">Seats:</span> <span className={availableSeats > 0 ? 'text-green-400' : 'text-red-400'}>{availableSeats} available</span> / {trip.maxSeats}</p>
                 </div>
 
-                {/* Show Joined Students to Organizer */}
                 {isOrganizer && trip.joinedStudents && trip.joinedStudents.length > 0 && (
                   <div className="mt-4 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
                     <h4 className="text-emerald-400 font-bold text-sm mb-2">Joined Students:</h4>
                     <div className="space-y-2">
                       {trip.joinedStudents.map((student, idx) => {
                         if (!student) return null;
-                        // Handle both object structure (with phone) and simple user object (without phone)
                         const studentId = student.user?.studentId || student.studentId || 'Student';
                         const gender = student.user?.gender || student.gender;
                         const studentImage = student.user?.profileImage || student.profileImage;
@@ -516,7 +384,6 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
                   </div>
                 )}
 
-                {/* Chat Button for Participants */}
                 {(isOrganizer || isJoined) && (
                   <button
                     onClick={() => { setChatTripId(trip._id); setChatOpen(true); }}
@@ -606,9 +473,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
           {/* Profile Details Inputs */}
           <div className="w-full space-y-3 mb-6">
             <div>
-              <label className="text-gray-400 text-xs block mb-1">
-                Gender <span className="text-red-500">*</span>
-              </label>
+              <label className="text-gray-400 text-xs block mb-1">Gender</label>
               <select 
                 value={gender} 
                 onChange={(e) => setGender(e.target.value)}
@@ -620,9 +485,7 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
               </select>
             </div>
             <div>
-              <label className="text-gray-400 text-xs block mb-1">
-                Age <span className="text-red-500">*</span>
-              </label>
+              <label className="text-gray-400 text-xs block mb-1">Age</label>
               <input 
                 type="number" 
                 value={age} 
@@ -633,14 +496,10 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
             </div>
             <div className="flex gap-2">
               <div className="w-1/2">
-                <label className="text-gray-400 text-xs block mb-1">
-                  Year <span className="text-red-500">*</span>
-                </label>
+                <label className="text-gray-400 text-xs block mb-1">Year</label>
                 <select 
                   value={year} 
                   onChange={(e) => setYear(e.target.value)}
-                  required
-                  aria-required="true"
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">Year</option>
@@ -651,14 +510,10 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
                 </select>
               </div>
               <div className="w-1/2">
-                <label className="text-gray-400 text-xs block mb-1">
-                  Sem <span className="text-red-500">*</span>
-                </label>
+                <label className="text-gray-400 text-xs block mb-1">Sem</label>
                 <select 
                   value={semester} 
                   onChange={(e) => setSemester(e.target.value)}
-                  required
-                  aria-required="true"
                   className="w-full bg-gray-700 border border-gray-600 rounded p-2 text-white text-sm focus:outline-none focus:border-emerald-500"
                 >
                   <option value="">Sem</option>
@@ -705,6 +560,12 @@ const TripList = ({ userId, user, pickupSearch, dropSearch, vehicleFilter }) => 
         isOpen={isChatOpen}
         onClose={() => setChatOpen(false)}
         currentUserId={userId}
+      />
+
+      <RateTripModal 
+        isOpen={isRateModalOpen}
+        onClose={() => setRateModalOpen(false)}
+        onSubmit={handleRateSubmit}
       />
 
       {/* Image Viewer Modal */}

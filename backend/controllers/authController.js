@@ -21,6 +21,10 @@ exports.login = async (req, res) => {
       return res.status(404).json({ msg: 'User not found' });
     }
 
+    if (role !== 'Admin' && user.isBlocked) {
+      return res.status(403).json({ msg: 'Your account has been blocked. Please contact admin.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ msg: 'Invalid credentials' });
@@ -154,6 +158,30 @@ exports.adminUpdateStudentPassword = async (req, res) => {
   }
 };
 
+// PUT /auth/admin/toggle-block (protected, admin only)
+exports.toggleBlockStudent = async (req, res) => {
+  const { studentId } = req.body;
+
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied' });
+    }
+
+    const user = await User.findOne({ studentId });
+    if (!user) {
+      return res.status(404).json({ msg: 'Student not found' });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.json({ msg: `Student ${user.isBlocked ? 'blocked' : 'unblocked'} successfully`, isBlocked: user.isBlocked });
+  } catch (err) {
+    console.error('❌ Admin toggle block error:', err.message);
+    res.status(500).send('Server Error');
+  }
+};
+
 // PUT /auth/profile (protected)
 exports.updateProfile = async (req, res) => {
   try {
@@ -175,5 +203,23 @@ exports.updateProfile = async (req, res) => {
   } catch (err) {
     console.error('❌ Update profile error:', err.message);
     res.status(500).send('Server Error');
+  }
+};
+
+// DELETE /auth/students (protected, admin only)
+exports.deleteStudents = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied' });
+    }
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ msg: 'Invalid request: No IDs provided' });
+    }
+    await User.deleteMany({ _id: { $in: ids } });
+    res.json({ msg: 'Students deleted successfully' });
+  } catch (err) {
+    console.error('❌ Bulk delete students error:', err.message);
+    res.status(500).json({ msg: 'Server error: Failed to delete students' });
   }
 };

@@ -53,6 +53,10 @@ const tripSchema = new mongoose.Schema(
       enum: ['planned', 'started', 'completed'],
       default: 'planned'
     },
+    rating: {
+      type: Number,
+      default: 0
+    },
     joinedStudents: [
       {
         user: {
