@@ -17,12 +17,27 @@ const CreateTripModal = ({ onClose, onTripCreated }) => {
   const vehicleOptions = ['TukTuk', 'Small Car', 'Medium Car', 'Van'];
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'phoneNumber') {
+      if (!/^\d*$/.test(value)) {
+        setError('Phone number must contain only numbers.');
+      } else if (error === 'Phone number must contain only numbers.') {
+        setError('');
+      }
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Final validation before submission
+    if (!/^\d+$/.test(formData.phoneNumber)) {
+      setError('Phone number must contain only numbers.');
+      return;
+    }
+
     setIsLoading(true);
 
     // Retrieve profile details from localStorage to attach to the trip
