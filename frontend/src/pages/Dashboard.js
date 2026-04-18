@@ -188,7 +188,13 @@ const Dashboard = ({ user }) => {
                 </div>
               </div>
               <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  if (balance < 500) {
+                    alert("Insufficient balance. You need a minimum of LKR 500 in your wallet to post a trip. Please recharge your account.");
+                  } else {
+                    setIsModalOpen(true);
+                  }
+                }}
                 className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg hover:shadow-emerald-500/50 transform hover:scale-105 flex items-center gap-2 whitespace-nowrap"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

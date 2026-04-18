@@ -15,6 +15,12 @@ exports.createTrip = async (req, res) => {
   try {
     const { destination, vehicleType, totalFare, startLocation, phoneNumber, organizerGender, organizerAge, organizerYear, organizerSemester } = req.body;
 
+    // Check if the student has a minimum balance of 500 credits
+    const user = await User.findById(req.user.id);
+    if (!user || (user.balance || 0) < 500) {
+      return res.status(400).json({ msg: 'Insufficient balance. You must have at least LKR 500 in your account to create a trip.' });
+    }
+
     const type = vehicleType || 'TukTuk';
     const maxSeats = SEATS_BY_VEHICLE[type] || 2;
 
