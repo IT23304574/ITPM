@@ -416,7 +416,12 @@ const Dashboard = ({ user }) => {
             </div>
           </div>
           
-          <div className="p-6">
+          <div className="p-6" style={{ 
+            maxHeight: '600px', 
+            overflowY: 'auto', 
+            overflowX: 'auto', 
+            position: 'relative' 
+          }}>
             <TripList 
               key={refreshKey} 
               userId={user.userId || user._id || user.id} 
