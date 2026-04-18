@@ -741,14 +741,28 @@ const AdminPanel = () => {
           </div>
 
           {/* Table */}
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ 
+            overflowX: 'auto', 
+            maxHeight: '500px', 
+            overflowY: 'auto',
+            position: 'relative'
+          }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                  <th style={{ padding: '0.65rem 1rem' }}></th>
+                  <th style={{ 
+                    padding: '0.65rem 1rem', 
+                    position: 'sticky', 
+                    top: 0, 
+                    backgroundColor: theme.cardBg, 
+                    zIndex: 2 
+                  }}></th>
                   {['Student ID', 'Joined Date', 'Actions'].map((h) => (
                     <th key={h} style={{
                       padding: '0.65rem 1rem',
+                      position: 'sticky',
+                      top: 0,
+                      backgroundColor: theme.cardBg,
                       textAlign: 'left',
                       fontFamily: "'JetBrains Mono', monospace",
                       fontSize: '0.66rem',
@@ -756,6 +770,7 @@ const AdminPanel = () => {
                       textTransform: 'uppercase',
                       color: '#2e4a60',
                       fontWeight: 600,
+                      zIndex: 2,
                     }}>{h}</th>
                   ))}
                 </tr>
@@ -953,14 +968,25 @@ const AdminPanel = () => {
           <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', marginBottom: '1.5rem' }}>
             Pending Recharge Requests
           </h2>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ 
+            overflowX: 'auto',
+            maxHeight: '400px',
+            overflowY: 'auto',
+            position: 'relative'
+          }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${theme.border}`, color: theme.muted, fontSize: '0.65rem', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Student</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Amount</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Proof</th>
-                  <th style={{ padding: '1rem', textAlign: 'left' }}>Actions</th>
+                  {['Student', 'Amount', 'Proof', 'Actions'].map((h) => (
+                    <th key={h} style={{ 
+                      padding: '1rem', 
+                      textAlign: 'left',
+                      position: 'sticky',
+                      top: 0,
+                      backgroundColor: theme.cardBg,
+                      zIndex: 2
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1023,7 +1049,14 @@ const AdminPanel = () => {
             marginBottom: '1.5rem',
           }}>Support Inquiries</h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1rem',
+            maxHeight: '500px',
+            overflowY: 'auto',
+            paddingRight: '0.5rem'
+          }}>
             {contactMessages.map((msg) => (
               <div key={msg._id} style={{
                 background: theme.bg,
